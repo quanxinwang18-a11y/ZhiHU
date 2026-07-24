@@ -1,5 +1,10 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText } from "ai";
+import { existsSync } from "node:fs";
+
+if (!process.env.XFYUN_API_KEY && existsSync(".env.local")) {
+  process.loadEnvFile(".env.local");
+}
 
 const apiKey = process.env.XFYUN_API_KEY;
 const modelId = process.env.XFYUN_MODEL_ID;
