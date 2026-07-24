@@ -1024,7 +1024,7 @@ export function QiuzhitaiApp() {
       <footer className="site-footer">
         <span>求知台 · 本地原型</span>
         <p>观点不是答案。分歧只是帮助你看见自己的尺度。</p>
-        <span>MOCK AI</span>
+        <span>AI OPINION SIMULATION</span>
       </footer>
     </main>
   );

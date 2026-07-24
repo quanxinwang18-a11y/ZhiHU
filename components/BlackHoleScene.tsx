@@ -24,15 +24,19 @@ const fragmentShader = `
     vec2 p = vUv - .5;
     float r = length(p);
     float a = atan(p.y, p.x);
-    float spiral = sin(a * 5.0 - uTime * .35 + 9.0 / (r + .15));
-    float ring = 1.0 - smoothstep(.018, .085, abs(r - .31 + spiral * .012));
-    float halo = (1.0 - smoothstep(.18, .49, r)) * smoothstep(.08, .24, r);
-    float grit = noise(vUv * 180. + uTime * .02);
-    vec3 gold = vec3(.68, .48, .20);
-    vec3 bone = vec3(.91, .86, .76);
-    vec3 color = mix(gold, bone, .28 + spiral * .1);
-    float alpha = (ring * .28 + halo * .035 + grit * .006) * (1. + uPull * .32);
-    alpha *= 1.0 - smoothstep(.46, .58, r);
+    float spiral = sin(a * 4.0 - uTime * .16 + 8.0 / (r + .18));
+    float fineSpiral = sin(a * 9.0 + uTime * .09 + 14.0 / (r + .2));
+    float primaryRing = 1.0 - smoothstep(.008, .046, abs(r - .31 + spiral * .008));
+    float secondaryRing = 1.0 - smoothstep(.012, .06, abs(r - .365 + fineSpiral * .006));
+    float innerFeather = smoothstep(.12, .22, r) * (1.0 - smoothstep(.22, .48, r));
+    float outerFeather = smoothstep(.28, .36, r) * (1.0 - smoothstep(.38, .54, r));
+    float grit = noise(vUv * 210. + uTime * .008);
+    vec3 champagne = vec3(.72, .64, .50);
+    vec3 bone = vec3(.88, .84, .76);
+    vec3 color = mix(champagne, bone, .18 + fineSpiral * .035);
+    float alpha = primaryRing * .16 + secondaryRing * .065;
+    alpha += innerFeather * .026 + outerFeather * .012 + grit * .003;
+    alpha *= (1.0 + uPull * .28) * (1.0 - smoothstep(.49, .59, r));
     gl_FragColor = vec4(color, alpha);
   }
 `;
@@ -54,8 +58,8 @@ function Vortex({ active }: { active: boolean }) {
       );
     }
     if (ring.current) {
-      ring.current.rotation.z += delta * (active ? 0.16 : 0.035);
-      const s = 1 + Math.sin(state.clock.elapsedTime * 0.55) * 0.018;
+      ring.current.rotation.z += delta * (active ? 0.07 : 0.012);
+      const s = 1 + Math.sin(state.clock.elapsedTime * 0.42) * 0.012;
       ring.current.scale.setScalar(s);
     }
   });
@@ -75,12 +79,18 @@ function Vortex({ active }: { active: boolean }) {
       </mesh>
       <mesh position={[0, 0, 0.08]}>
         <circleGeometry args={[0.7, 96]} />
-        <meshBasicMaterial color="#000" />
+        <meshBasicMaterial color="#070605" />
       </mesh>
-      <Float speed={0.45} rotationIntensity={0.08} floatIntensity={0.14}>
+      <Float speed={0.34} rotationIntensity={0.025} floatIntensity={0.08}>
         <mesh position={[0, 0, 0.12]}>
-          <ringGeometry args={[0.72, 0.735, 128]} />
-          <meshBasicMaterial color="#caa45e" transparent opacity={0.85} />
+          <ringGeometry args={[0.716, 0.726, 128]} />
+          <meshBasicMaterial color="#c8b38e" transparent opacity={0.48} />
+        </mesh>
+      </Float>
+      <Float speed={0.22} rotationIntensity={0.015} floatIntensity={0.05}>
+        <mesh position={[0, 0, 0.1]}>
+          <ringGeometry args={[0.732, 0.756, 128]} />
+          <meshBasicMaterial color="#8f754d" transparent opacity={0.18} />
         </mesh>
       </Float>
     </group>
@@ -91,15 +101,15 @@ export function BlackHoleScene({ active = false }: { active?: boolean }) {
   return (
     <div className="black-hole-canvas" aria-hidden="true">
       <Canvas camera={{ position: [0, 0, 5], fov: 42 }} dpr={[1, 1.6]}>
-        <color attach="background" args={["#050505"]} />
+        <color attach="background" args={["#0a0908"]} />
         <Vortex active={active} />
         <Sparkles
-          count={active ? 95 : 48}
+          count={active ? 78 : 38}
           scale={[6, 4, 1]}
-          size={1.4}
-          speed={0.12}
-          color="#c6a15c"
-          opacity={0.34}
+          size={1.1}
+          speed={0.08}
+          color="#c8b38e"
+          opacity={0.22}
         />
       </Canvas>
     </div>
