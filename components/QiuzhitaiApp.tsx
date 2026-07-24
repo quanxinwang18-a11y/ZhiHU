@@ -2,6 +2,10 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { callCompletionApi } from "ai";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
 import {
   FormEvent,
   useCallback,
@@ -26,18 +30,28 @@ type Advisor = {
   epithet: string;
   image: string;
   accent: string;
+  cardId: string;
+  status: CardState;
+  initialOpinion: string;
+  settledOrder: number | null;
 };
 type Message = {
   id: string;
   advisorId: string;
+  cardId: string;
   role: "user" | "assistant";
   content: string;
   createdAt: number;
+  status: "generating" | "complete" | "stopped" | "failed";
 };
 type Pack = {
   id: string;
   title: string;
   question: string;
+  problemMirror: string;
+  requestedCardCount: number;
+  status: "generating" | "ready" | "empty";
+  selectedCardId: string | null;
   advisors: Advisor[];
   messages: Message[];
   decision: string;
@@ -45,21 +59,6 @@ type Pack = {
   updatedAt: number;
 };
 type CardState = "waiting" | "summoning" | "ready" | "failed";
-
-async function consumeTextStream(
-  body: ReadableStream<Uint8Array>,
-  onText: (text: string) => void,
-) {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let text = "";
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) return text;
-    text = `${text}${decoder.decode(value, { stream: true })}`;
-    onText(text);
-  }
-}
 
 function Icon({
   children,
@@ -103,6 +102,10 @@ function AdvisorCard({
   return (
     <article
       className={`oracle-card ${state} ${selected ? "selected" : ""}`}
+      data-testid="oracle-card"
+      data-advisor-id={advisor.id}
+      data-card-id={advisor.cardId}
+      data-state={state}
       style={
         {
           "--card-accent": advisor.accent,
@@ -151,6 +154,8 @@ export function QiuzhitaiApp() {
   const [count, setCount] = useState(4);
   const [pack, setPack] = useState<Pack | null>(null);
   const [history, setHistory] = useState<Pack[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<number | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [selectedAdvisor, setSelectedAdvisor] = useState<string | null>(null);
@@ -163,6 +168,7 @@ export function QiuzhitaiApp() {
   const [soundOn, setSoundOn] = useState(false);
   const [notice, setNotice] = useState("");
   const aborters = useRef(new Map<string, AbortController>());
+  const decisionTimer = useRef<number | undefined>(undefined);
 
   const selected = pack?.advisors.find(
     (advisor) => advisor.id === selectedAdvisor,
@@ -170,15 +176,39 @@ export function QiuzhitaiApp() {
   const selectedMessages = useMemo(
     () =>
       (pack?.messages || []).filter(
-        (message) => message.advisorId === selectedAdvisor,
+        (message) =>
+          message.advisorId === selectedAdvisor &&
+          message.status !== "generating",
       ),
     [pack?.messages, selectedAdvisor],
   );
 
-  const loadHistory = useCallback(async () => {
-    const response = await fetch("/api/packs");
-    if (response.ok) setHistory(await response.json());
-  }, []);
+  const loadHistory = useCallback(
+    async (append = false, cursor?: number | null) => {
+      setHistoryLoading(true);
+      const query = cursor ? `?cursor=${cursor}` : "";
+      const response = await fetch(`/api/packs${query}`);
+      if (response.ok) {
+        const data = (await response.json()) as {
+          items: Pack[];
+          nextCursor: number | null;
+        };
+        setHistory((current) =>
+          append
+            ? [
+                ...current,
+                ...data.items.filter(
+                  (item) => !current.some((existing) => existing.id === item.id),
+                ),
+              ]
+            : data.items,
+        );
+        setHistoryCursor(data.nextCursor);
+      }
+      setHistoryLoading(false);
+    },
+    [],
+  );
 
   const checkSession = useCallback(async () => {
     const response = await fetch("/api/auth/get-session");
@@ -187,7 +217,7 @@ export function QiuzhitaiApp() {
     setAuthenticated(ok);
     setUsername(data?.user?.username || data?.user?.name || "");
     setBooting(false);
-    if (ok) await loadHistory();
+    if (ok) await loadHistory(false);
   }, [loadHistory]);
 
   useEffect(() => {
@@ -195,12 +225,55 @@ export function QiuzhitaiApp() {
     const controllers = aborters.current;
     return () => {
       window.clearTimeout(timer);
+      if (decisionTimer.current) window.clearTimeout(decisionTimer.current);
       controllers.forEach((controller) => controller.abort());
     };
   }, [checkSession]);
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelectedAdvisor(null);
+    }
+    function onPageHide() {
+      if (working && pack?.id) {
+        navigator.sendBeacon(`/api/packs/${pack.id}/abandon`);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [pack?.id, working]);
+
   function mergeMessages(next: Message[]) {
     setPack((current) => (current ? { ...current, messages: next } : current));
+  }
+
+  function applyPackSnapshot(latest: Pack) {
+    setPack(latest);
+    setStates(
+      Object.fromEntries(
+        latest.advisors.map((advisor) => [advisor.id, advisor.status]),
+      ),
+    );
+    setTexts((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        latest.advisors
+          .filter((advisor) => advisor.initialOpinion)
+          .map((advisor) => [advisor.id, advisor.initialOpinion]),
+      ),
+    }));
+  }
+
+  async function refreshPack(packId: string) {
+    const response = await fetch(`/api/packs/${packId}`);
+    if (!response.ok) return null;
+    const latest = (await response.json()) as Pack;
+    applyPackSnapshot(latest);
+    return latest;
   }
 
   async function streamAdvisor(
@@ -208,41 +281,91 @@ export function QiuzhitaiApp() {
     advisor: Advisor,
     message?: string,
   ): Promise<boolean> {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 60_000);
-    aborters.current.set(advisor.id, controller);
+    let controller: AbortController | null = null;
+    let wasAborted = false;
+    let requestFailed = false;
+    const timeout = window.setTimeout(() => controller?.abort(), 60_000);
+    let assembled = "";
+    let assistantMessageId = "";
     setStates((current) => ({ ...current, [advisor.id]: "summoning" }));
-    setTexts((current) =>
-      message ? current : { ...current, [advisor.id]: "" },
-    );
+    setTexts((current) => ({ ...current, [advisor.id]: "" }));
     try {
-      const response = await fetch(`/api/packs/${targetPack.id}/generate`, {
-        method: "POST",
+      const result = await callCompletionApi({
+        api: `/api/packs/${targetPack.id}/generate`,
+        prompt: message || targetPack.question,
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ advisorId: advisor.id, message }),
-        signal: controller.signal,
+        body: { cardId: advisor.cardId, message },
+        streamProtocol: "text",
+        setCompletion: (partial) => {
+          assembled = partial;
+          setTexts((current) => ({ ...current, [advisor.id]: partial }));
+        },
+        setLoading: () => undefined,
+        setError: () => undefined,
+        setAbortController: (nextController) => {
+          controller = nextController;
+          if (nextController) {
+            nextController.signal.addEventListener(
+              "abort",
+              () => {
+                wasAborted = true;
+              },
+              { once: true },
+            );
+            aborters.current.set(advisor.id, nextController);
+          } else {
+            aborters.current.delete(advisor.id);
+          }
+        },
+        onFinish: (_prompt, completion) => {
+          assembled = completion;
+        },
+        onError: () => {
+          requestFailed = true;
+        },
+        fetch: async (input, init) => {
+          const response = await fetch(input, init);
+          assistantMessageId =
+            response.headers.get("X-Assistant-Message-Id") || "";
+          return response;
+        },
       });
-      if (!response.ok || !response.body) {
-        throw new Error((await response.json()).error || "观点生成失败");
+      if (result == null) {
+        throw new Error("观点生成失败");
       }
-      await consumeTextStream(response.body, (assembled) =>
-        setTexts((current) => ({ ...current, [advisor.id]: assembled })),
-      );
-      setStates((current) => ({ ...current, [advisor.id]: "ready" }));
-      const refreshed = await fetch(`/api/packs/${targetPack.id}`);
-      if (refreshed.ok) {
-        const latest = (await refreshed.json()) as Pack;
-        mergeMessages(latest.messages);
+      const latest = await refreshPack(targetPack.id);
+      if (!latest) {
+        setStates((current) => ({ ...current, [advisor.id]: "ready" }));
       }
       return true;
-    } catch (streamError) {
-      if (controller.signal.aborted) {
-        setNotice(`${advisor.name} 的生成已停止，已保留当前文字。`);
+    } catch {
+      if (message && assistantMessageId) {
+        await fetch(`/api/cards/${advisor.cardId}/chat/stop`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messageId: assistantMessageId,
+            content: assembled,
+            status: wasAborted ? "stopped" : "failed",
+          }),
+        });
+        setNotice(
+          wasAborted
+            ? `${advisor.name} 的生成已停止，已保留当前文字。`
+            : `${advisor.name} 的追问中断，已保留抵达的文字。`,
+        );
         setStates((current) => ({ ...current, [advisor.id]: "ready" }));
       } else {
-        console.error(streamError);
+        await fetch(`/api/cards/${advisor.cardId}/fail`, { method: "POST" });
         setStates((current) => ({ ...current, [advisor.id]: "failed" }));
+        setNotice(
+          requestFailed
+            ? `${advisor.name} 暂时没有回应，其他卡牌不受影响。`
+            : `${advisor.name} 的连接已中断，其他卡牌不受影响。`,
+        );
       }
+      await refreshPack(targetPack.id);
       return false;
     } finally {
       window.clearTimeout(timeout);
@@ -275,20 +398,28 @@ export function QiuzhitaiApp() {
           nextPack.advisors.map((advisor) => [advisor.id, "waiting"]),
         ),
       );
-      setSelectedAdvisor(nextPack.advisors[0]?.id || null);
+      setSelectedAdvisor(null);
+      void fetch(`/api/packs/${nextPack.id}/mirror`, {
+        method: "POST",
+      })
+        .then((mirrorResponse) => mirrorResponse.json())
+        .then((mirrorData) =>
+          setPack((current) =>
+            current?.id === nextPack.id
+              ? { ...current, problemMirror: mirrorData.mirror || "" }
+              : current,
+          ),
+        )
+        .catch(() => undefined);
       await new Promise((resolve) => setTimeout(resolve, 540));
       const results = await Promise.all(
-        nextPack.advisors.map(async (advisor, index) => {
-          await new Promise((resolve) => setTimeout(resolve, index * 170));
-          return streamAdvisor(nextPack, advisor);
-        }),
+        nextPack.advisors.map((advisor) => streamAdvisor(nextPack, advisor)),
       );
       if (!results.some(Boolean)) {
-        await fetch(`/api/packs/${nextPack.id}`, { method: "DELETE" });
         setPack(null);
-        setError("所有观点均未能抵达，这次空卡牌包已移除。请稍后再试。");
+        setError("暂时没有收到回应，请稍后再试。");
       }
-      await loadHistory();
+      await loadHistory(false);
     } catch (submitError) {
       setError(
         submitError instanceof Error ? submitError.message : "发生未知错误",
@@ -303,30 +434,25 @@ export function QiuzhitaiApp() {
     if (!response.ok) return;
     const data = (await response.json()) as Pack;
     const cardTexts = Object.fromEntries(
-      data.advisors.map((advisor) => [
-        advisor.id,
-        [...data.messages]
-          .reverse()
-          .find(
-            (message) =>
-              message.advisorId === advisor.id &&
-              message.role === "assistant",
-          )?.content || "",
-      ]),
+      data.advisors.map((advisor) => [advisor.id, advisor.initialOpinion]),
     );
     setPack(data);
     setQuestion(data.question);
+    setCount(data.requestedCardCount);
     setDecision(data.decision);
     setTexts(cardTexts);
     setStates(
       Object.fromEntries(
         data.advisors.map((advisor) => [
           advisor.id,
-          cardTexts[advisor.id] ? "ready" : "waiting",
+          advisor.status,
         ]),
       ),
     );
-    setSelectedAdvisor(data.advisors[0]?.id || null);
+    const selectedCard = data.advisors.find(
+      (advisor) => advisor.cardId === data.selectedCardId,
+    );
+    setSelectedAdvisor(selectedCard?.id || null);
     setHistoryOpen(false);
   }
 
@@ -347,9 +473,15 @@ export function QiuzhitaiApp() {
       setStates(
         Object.fromEntries(next.advisors.map((advisor) => [advisor.id, "waiting"])),
       );
-      setSelectedAdvisor(next.advisors[0]?.id || null);
-      await Promise.all(next.advisors.map((advisor) => streamAdvisor(next, advisor)));
-      await loadHistory();
+      setSelectedAdvisor(null);
+      const results = await Promise.all(
+        next.advisors.map((advisor) => streamAdvisor(next, advisor)),
+      );
+      if (!results.some(Boolean)) {
+        setPack(null);
+        setError("暂时没有收到回应，请稍后再试。");
+      }
+      await loadHistory(false);
     }
     setWorking(false);
     setControlsOpen(false);
@@ -363,25 +495,63 @@ export function QiuzhitaiApp() {
     const optimistic: Message = {
       id: "optimistic-followup",
       advisorId: selected.id,
+      cardId: selected.cardId,
       role: "user",
       content: message,
       createdAt: 0,
+      status: "complete",
     };
     mergeMessages([...pack.messages, optimistic]);
     await streamAdvisor(pack, selected, message);
   }
 
-  async function saveDecision() {
-    if (!pack) return;
-    const response = await fetch(`/api/packs/${pack.id}`, {
+  async function persistDecision(packId: string, value: string, announce = false) {
+    const response = await fetch(`/api/packs/${packId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision }),
+      body: JSON.stringify({ decision: value }),
     });
     if (response.ok) {
-      setNotice("你的决定已收入卡牌包。");
-      await loadHistory();
+      if (announce) setNotice("你的决定已自动收入卡牌包。");
+      await loadHistory(false);
     }
+  }
+
+  function scheduleDecisionSave(value: string) {
+    setDecision(value);
+    if (!pack) return;
+    if (decisionTimer.current) window.clearTimeout(decisionTimer.current);
+    decisionTimer.current = window.setTimeout(
+      () => void persistDecision(pack.id, value),
+      700,
+    );
+  }
+
+  async function selectAdvisor(advisor: Advisor) {
+    if (!pack || advisor.status !== "ready") return;
+    setSelectedAdvisor(advisor.id);
+    await fetch(`/api/packs/${pack.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selectedCardId: advisor.cardId }),
+    });
+  }
+
+  function stopSelectedGeneration() {
+    if (!selected) return;
+    aborters.current.get(selected.id)?.abort();
+  }
+
+  function beginNewQuestion() {
+    aborters.current.forEach((controller) => controller.abort());
+    setPack(null);
+    setQuestion("");
+    setSelectedAdvisor(null);
+    setTexts({});
+    setStates({});
+    setDecision("");
+    setControlsOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function deletePack(id: string) {
@@ -391,7 +561,7 @@ export function QiuzhitaiApp() {
       setPack(null);
       setQuestion("");
     }
-    await loadHistory();
+    await loadHistory(false);
   }
 
   async function renamePack(item: Pack) {
@@ -404,7 +574,7 @@ export function QiuzhitaiApp() {
     });
     if (response.ok) {
       if (pack?.id === item.id) setPack({ ...pack, title: title.slice(0, 60) });
-      await loadHistory();
+      await loadHistory(false);
     }
   }
 
@@ -462,7 +632,14 @@ export function QiuzhitaiApp() {
     );
   }
   if (!authenticated) {
-    return <AuthGate onAuthenticated={() => void checkSession()} />;
+    return (
+      <AuthGate
+        onAuthenticated={() => {
+          void startSound().then(() => setSoundOn(true));
+          void checkSession();
+        }}
+      />
+    );
   }
 
   return (
@@ -472,10 +649,7 @@ export function QiuzhitaiApp() {
         <button
           className="wordmark"
           type="button"
-          onClick={() => {
-            setPack(null);
-            setQuestion("");
-          }}
+          onClick={beginNewQuestion}
         >
           <span>求知台</span>
           <em>ORACLE OF DISSENT</em>
@@ -502,23 +676,86 @@ export function QiuzhitaiApp() {
             ? "没有唯一正确的职场答案。阅读冲突，保留你的判断。"
             : "描述真实处境。四个立场不同的顾问，将同时回应。"}
         </p>
-        <form className="question-form" onSubmit={consult}>
-          <textarea
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            maxLength={2000}
-            placeholder="例如：领导临时将我调到一个陌生方向，承诺机会很多，但没有明确职责。我担心拒绝影响关系，接受又可能浪费一年……"
-            aria-label="描述你的职场问题"
-          />
-          <div className="question-meta">
-            <span>{question.length} / 2000</span>
-            <span>默认随机 {count} 个视角</span>
+        {pack ? (
+          <div className="question-frozen">
+            <p>{pack.question}</p>
+            {pack.problemMirror && (
+              <blockquote>
+                <span>问题镜像</span>
+                {pack.problemMirror}
+              </blockquote>
+            )}
+            <button className="consult-button" onClick={beginNewQuestion} type="button">
+              <span>提出一个新问题</span>
+              <i />
+            </button>
           </div>
-          <button className="consult-button" disabled={working} type="submit">
-            <span>{working ? "观点正在穿过黑洞" : pack ? "提出一个新问题" : "投入黑洞"}</span>
-            <i />
-          </button>
-        </form>
+        ) : (
+          <form className="question-form" onSubmit={consult}>
+            <textarea
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              onInput={(event) => {
+                event.currentTarget.style.height = "auto";
+                event.currentTarget.style.height = `${Math.min(280, Math.max(148, event.currentTarget.scrollHeight))}px`;
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              maxLength={1000}
+              placeholder="例如：领导临时将我调到一个陌生方向，承诺机会很多，但没有明确职责。我担心拒绝影响关系，接受又可能浪费一年……"
+              aria-label="描述你的职场问题"
+            />
+            <div className="question-meta">
+              <span>{question.length} / 1000</span>
+              <span>⌘ / Ctrl + Enter · 随机 {count} 个视角</span>
+            </div>
+            <button className="consult-button" disabled={working} type="submit">
+              <span>{working ? "观点正在穿过黑洞" : "投入黑洞"}</span>
+              <i />
+            </button>
+          </form>
+        )}
+        {!pack && (
+          <div className="input-count-control">
+            <button
+              type="button"
+              className="hidden-control"
+              onClick={() => setControlsOpen((open) => !open)}
+              aria-label="设置抽取数量"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+            {controlsOpen && (
+              <aside className="control-popover">
+                <p>本次抽取视角数量</p>
+                <div className="number-grid">
+                  {Array.from({ length: 8 }, (_, index) => index + 1).map(
+                    (number) => (
+                      <button
+                        type="button"
+                        aria-label={`抽取 ${number} 张`}
+                        className={count === number ? "active" : ""}
+                        onClick={() => {
+                          setCount(number);
+                          setControlsOpen(false);
+                        }}
+                        key={number}
+                      >
+                        {number}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </aside>
+            )}
+          </div>
+        )}
         {error && <p className="stage-error">{error}</p>}
       </section>
 
@@ -559,6 +796,7 @@ export function QiuzhitaiApp() {
                       (number) => (
                         <button
                           type="button"
+                          aria-label={`抽取 ${number} 张`}
                           className={count === number ? "active" : ""}
                           onClick={() => setCount(number)}
                           key={number}
@@ -570,6 +808,9 @@ export function QiuzhitaiApp() {
                   </div>
                   <button type="button" className="reroll-button" onClick={reroll}>
                     重新抽取并覆盖当前卡牌包
+                  </button>
+                  <button type="button" className="new-question-button" onClick={beginNewQuestion}>
+                    提出新问题
                   </button>
                 </aside>
               )}
@@ -586,7 +827,7 @@ export function QiuzhitaiApp() {
                 text={texts[advisor.id] || ""}
                 state={states[advisor.id] || "waiting"}
                 selected={selectedAdvisor === advisor.id}
-                onClick={() => setSelectedAdvisor(advisor.id)}
+                onClick={() => void selectAdvisor(advisor)}
                 index={index}
               />
             ))}
@@ -594,8 +835,17 @@ export function QiuzhitaiApp() {
         </section>
       )}
 
-      {pack && selected && (
-        <section className="reading-room">
+      {pack && selected && selected.status === "ready" && (
+        <div className="reading-layer" onMouseDown={() => setSelectedAdvisor(null)}>
+        <section className="reading-room" onMouseDown={(event) => event.stopPropagation()}>
+          <button
+            className="close-manuscript"
+            type="button"
+            aria-label="收起顾问手稿"
+            onClick={() => setSelectedAdvisor(null)}
+          >
+            ⌃
+          </button>
           <header>
             <div className="advisor-monogram">{selected.name.slice(0, 1)}</div>
             <div>
@@ -609,16 +859,42 @@ export function QiuzhitaiApp() {
               <small>你的原始问题</small>
               {pack.question}
             </p>
+            <div className="message assistant initial-opinion">
+              <span>{selected.name}</span>
+              <div className="markdown-body">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                >
+                  {selected.initialOpinion}
+                </ReactMarkdown>
+              </div>
+            </div>
             {selectedMessages.map((message) => (
               <div className={`message ${message.role}`} key={message.id}>
                 <span>{message.role === "user" ? "你" : selected.name}</span>
-                <p>{message.content}</p>
+                <div className="markdown-body">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeSanitize]}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                  {message.status === "stopped" && (
+                    <small className="stopped-label">回答已停止</small>
+                  )}
+                  {message.status === "failed" && (
+                    <small className="stopped-label">回答中断</small>
+                  )}
+                </div>
               </div>
             ))}
             {states[selected.id] === "summoning" && (
               <div className="message assistant streaming">
                 <span>{selected.name}</span>
-                <p>{texts[selected.id]}<i /></p>
+                <div className="markdown-body">
+                  <p>{texts[selected.id]}<i /></p>
+                </div>
               </div>
             )}
           </div>
@@ -626,15 +902,25 @@ export function QiuzhitaiApp() {
             <textarea
               value={followup}
               onChange={(event) => setFollowup(event.target.value)}
-              maxLength={1200}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              disabled={states[selected.id] === "summoning"}
+              maxLength={1000}
               placeholder={`继续追问 ${selected.name}。这段对话不会被其他顾问看见。`}
             />
-            <button
-              type="submit"
-              disabled={!followup.trim() || states[selected.id] === "summoning"}
-            >
-              继续追问 ↗
-            </button>
+            {states[selected.id] === "summoning" ? (
+              <button type="button" onClick={stopSelectedGeneration}>
+                停止并保留 ↗
+              </button>
+            ) : (
+              <button type="submit" disabled={!followup.trim()}>
+                继续追问 ↗
+              </button>
+            )}
           </form>
           <div className="decision-area">
             <div>
@@ -643,13 +929,12 @@ export function QiuzhitaiApp() {
             </div>
             <textarea
               value={decision}
-              onChange={(event) => setDecision(event.target.value)}
+              onChange={(event) => scheduleDecisionSave(event.target.value)}
+              onBlur={() => pack && void persistDecision(pack.id, decision, true)}
               maxLength={1000}
               placeholder="这里不生成结论，只留下你的判断。"
             />
-            <button type="button" className="quiet-button" onClick={saveDecision}>
-              收入卡牌包
-            </button>
+            <span className="autosave-state">自动保存</span>
           </div>
           <div className="reading-actions">
             <a href={`/api/packs/${pack.id}/export`}>导出 Markdown</a>
@@ -658,6 +943,7 @@ export function QiuzhitaiApp() {
             </button>
           </div>
         </section>
+        </div>
       )}
 
       {notice && (
@@ -678,7 +964,20 @@ export function QiuzhitaiApp() {
               ×
             </button>
           </header>
-          <div className="history-list">
+          <div
+            className="history-list"
+            onScroll={(event) => {
+              const element = event.currentTarget;
+              if (
+                historyCursor &&
+                !historyLoading &&
+                element.scrollTop + element.clientHeight >=
+                  element.scrollHeight - 80
+              ) {
+                void loadHistory(true, historyCursor);
+              }
+            }}
+          >
             {history.length === 0 && (
               <p className="empty-history">你还没有留下任何选择。</p>
             )}
@@ -688,7 +987,7 @@ export function QiuzhitaiApp() {
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <div>
                     <h3>{item.title}</h3>
-                    <p>{new Date(item.updatedAt).toLocaleDateString("zh-CN")}</p>
+                    <p>{new Date(item.createdAt).toLocaleDateString("zh-CN")}</p>
                   </div>
                 </button>
                 <button
@@ -709,6 +1008,7 @@ export function QiuzhitaiApp() {
                 </button>
               </article>
             ))}
+            {historyLoading && <p className="history-loading">正在整理卡牌包…</p>}
           </div>
           {history.length > 0 && (
             <button className="clear-history" type="button" onClick={clearHistory}>

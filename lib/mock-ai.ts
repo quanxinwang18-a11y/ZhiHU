@@ -30,7 +30,11 @@ export function makeMockOpinion(advisorId: string, question: string, followup?: 
   return `${opening} 你问的是“${questionEcho}”。${middle} 我会建议你先做一个不伤害选择权的小动作，在四十八小时内拿到新事实，再决定是否升级行动。别急着证明谁对；先确认什么结果值得你承担代价。`;
 }
 
-export function streamText(text: string, onDone: () => void) {
+export function streamText(
+  text: string,
+  onDone: () => void,
+  delayMs = 12,
+) {
   const encoder = new TextEncoder();
   let cursor = 0;
   return new ReadableStream({
@@ -43,7 +47,7 @@ export function streamText(text: string, onDone: () => void) {
       const size = Math.floor(Math.random() * 5) + 2;
       controller.enqueue(encoder.encode(text.slice(cursor, cursor + size)));
       cursor += size;
-      await new Promise((resolve) => setTimeout(resolve, 12));
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     },
   });
 }

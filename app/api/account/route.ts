@@ -21,12 +21,22 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "密码不正确" }, { status: 403 });
   }
   const remove = database.transaction(() => {
+    const user = database
+      .prepare("SELECT username FROM user WHERE id = ?")
+      .get(authResult.user.id) as { username: string | null } | undefined;
     database
       .prepare("DELETE FROM advice_packs WHERE user_id = ?")
       .run(authResult.user.id);
     database.prepare("DELETE FROM session WHERE userId = ?").run(authResult.user.id);
     database.prepare("DELETE FROM account WHERE userId = ?").run(authResult.user.id);
     database.prepare("DELETE FROM user WHERE id = ?").run(authResult.user.id);
+    if (user?.username) {
+      database
+        .prepare(
+          "DELETE FROM registration_codes WHERE username_normalized = ?",
+        )
+        .run(user.username.toLocaleLowerCase("en-US"));
+    }
   });
   remove();
   return Response.json({ ok: true });

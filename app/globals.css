@@ -77,7 +77,11 @@ button { color: inherit; }
 .question-form textarea { display: block; width: 100%; height: 148px; resize: none; padding: 24px 27px 40px; border: 1px solid rgba(203,171,109,.32); outline: 0; color: var(--bone); background: rgba(6,6,5,.84); box-shadow: 0 22px 70px rgba(0,0,0,.55); font: 400 15px/1.85 var(--serif); }
 .question-form textarea:focus { border-color: rgba(224,190,123,.62); }
 .question-form textarea::placeholder { color: #5d5951; }
-.question-meta { position: absolute; top: 118px; left: 27px; right: 27px; display: flex; justify-content: space-between; color: #625e56; font-size: 9px; }
+.question-meta { position: absolute; bottom: 82px; left: 27px; right: 27px; display: flex; justify-content: space-between; color: #625e56; font-size: 9px; }
+.question-frozen { width: min(760px, 72vw); }
+.question-frozen > p { margin: 0; padding: 23px 28px; border: 1px solid rgba(203,171,109,.32); background: rgba(6,6,5,.84); color: var(--bone); text-align: left; font: 400 15px/1.9 var(--serif); }
+.question-frozen blockquote { margin: 10px 0 0; padding: 14px 20px; border-left: 1px solid var(--gold); color: #8e8678; text-align: left; font: 12px/1.75 var(--serif); background: rgba(8,8,7,.55); }
+.question-frozen blockquote span { display: block; margin-bottom: 4px; color: var(--gold); font: 8px var(--sans); letter-spacing: .2em; }
 .consult-button { width: 192px; height: 54px; margin-top: 20px; border: 1px solid var(--gold); background: #070706; cursor: pointer; color: var(--bright); letter-spacing: .14em; position: relative; overflow: hidden; }
 .consult-button::before { content: ""; position: absolute; width: 40px; height: 180%; top: -40%; left: -60px; transform: rotate(18deg); background: linear-gradient(90deg, transparent, rgba(255,243,214,.2), transparent); transition: left .55s; }
 .consult-button:hover::before { left: 110%; }
@@ -85,6 +89,8 @@ button { color: inherit; }
 .consult-button:disabled { cursor: wait; animation: goldPulse 1.5s ease-in-out infinite; }
 @keyframes goldPulse { 50% { box-shadow: 0 0 40px rgba(189,150,81,.18); } }
 .stage-error { color: #d98b75; font-size: 12px; }
+.input-count-control { position: absolute; right: 4.5vw; bottom: 155px; }
+.input-count-control .control-popover { top: 50px; }
 
 .pack-stage { position: relative; z-index: 3; min-height: 720px; padding: 60px 4.5vw 96px; border-top: 1px solid rgba(207,170,99,.13); background: linear-gradient(180deg, #050505, #0a0907 55%, #050505); }
 .pack-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 34px; }
@@ -100,6 +106,7 @@ button { color: inherit; }
 .number-grid button { height: 31px; border: 0; border-right: 1px solid #28251e; background: transparent; color: #706a60; cursor: pointer; }
 .number-grid button.active { background: var(--gold); color: #080706; }
 .reroll-button { width: 100%; margin-top: 17px; padding: 11px; border: 1px solid #4b402c; background: transparent; color: var(--bright); cursor: pointer; font-size: 11px; }
+.new-question-button { width: 100%; margin-top: 8px; padding: 10px; border: 0; background: transparent; color: #777064; cursor: pointer; font-size: 10px; }
 .card-rail { --card-count: 4; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, calc((100% - 54px) / var(--card-count))); gap: 18px; overflow-x: auto; overflow-y: hidden; padding: 10px 1px 26px; scroll-snap-type: x mandatory; }
 .oracle-card { --card-accent: var(--gold); position: relative; aspect-ratio: 2/3; min-height: 440px; max-height: 570px; overflow: hidden; scroll-snap-align: start; cursor: pointer; isolation: isolate; border: 1px solid rgba(222,195,141,.22); background: #0a0908; box-shadow: 0 22px 60px rgba(0,0,0,.45); transform: translateY(35px); opacity: 0; animation: cardArrival .8s cubic-bezier(.2,.75,.2,1) var(--card-delay) forwards; transition: border-color .3s, transform .3s, box-shadow .3s; }
 @keyframes cardArrival { to { transform: translateY(0); opacity: 1; } }
@@ -127,7 +134,10 @@ button { color: inherit; }
 .oracle-card footer em { padding: 5px 7px; border: 1px solid rgba(202,167,101,.32); color: var(--bright); font: normal 8px var(--sans); }
 .card-disclaimer { position: absolute; top: 15px; right: 14px; z-index: 8; color: rgba(240,230,211,.46); font-size: 8px; }
 
-.reading-room { position: relative; z-index: 3; width: min(980px, 88vw); margin: 0 auto 110px; padding: 68px 76px; border: 1px solid #29251d; background: linear-gradient(90deg, transparent 49.9%, rgba(182,144,74,.04) 50%, transparent 50.1%), #090908; box-shadow: 0 35px 100px #000; }
+.reading-layer { position: fixed; z-index: 80; inset: 0; overflow-y: auto; padding: 54px 0; background: rgba(0,0,0,.82); backdrop-filter: blur(12px); animation: manuscriptIn .35s ease-out; }
+@keyframes manuscriptIn { from { opacity: 0; } }
+.reading-room { position: relative; width: min(980px, 88vw); min-height: calc(100vh - 108px); margin: 0 auto; padding: 68px 76px; border: 1px solid #55462e; background: linear-gradient(90deg, transparent 49.9%, rgba(182,144,74,.04) 50%, transparent 50.1%), #090908; box-shadow: 0 35px 100px #000; }
+.close-manuscript { position: absolute; right: 22px; top: 18px; width: 30px; height: 30px; border: 0; background: transparent; color: var(--gold); cursor: pointer; }
 .reading-room > header { display: flex; align-items: center; gap: 20px; padding-bottom: 26px; border-bottom: 1px solid var(--line); }
 .advisor-monogram { display: grid; place-items: center; width: 58px; aspect-ratio: 1; border: 1px solid var(--gold); border-radius: 50%; font: 22px var(--serif); }
 .reading-room h2 { margin: 0 0 5px; font: 500 25px var(--serif); letter-spacing: .15em; }
@@ -138,6 +148,12 @@ button { color: inherit; }
 .message { position: relative; margin: 36px 0; display: grid; grid-template-columns: 95px 1fr; gap: 24px; }
 .message span { color: var(--gold); font: 11px var(--serif); padding-top: 5px; }
 .message p { margin: 0; max-width: 680px; color: #d2cbbf; font: 400 15px/2.05 var(--serif); white-space: pre-wrap; }
+.markdown-body { max-width: 680px; color: #d2cbbf; font: 400 15px/2.05 var(--serif); }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body > :last-child { margin-bottom: 0; }
+.markdown-body blockquote { margin-left: 0; padding-left: 16px; border-left: 1px solid var(--gold); color: #aca291; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.3em; }
+.stopped-label { display: inline-block; margin-top: 12px; color: #8d7650; font: 9px var(--sans); letter-spacing: .12em; }
 .message.user { margin-left: 18%; grid-template-columns: 55px 1fr; }
 .message.user span { color: #7c756a; }
 .message.user p { color: #9d968a; font-size: 13px; border-left: 1px solid #312d25; padding-left: 18px; }
@@ -150,6 +166,7 @@ button { color: inherit; }
 .decision-area { margin-top: 65px; padding-top: 38px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 235px 1fr auto; gap: 20px; align-items: stretch; }
 .decision-area h3 { margin: 0; font: 400 17px/1.6 var(--serif); }
 .decision-area textarea { min-height: 90px; resize: vertical; border: 1px solid #302d25; background: #070706; color: var(--bone); padding: 15px; outline: 0; font: 13px/1.7 var(--serif); }
+.autosave-state { align-self: center; color: #605b53; font-size: 9px; white-space: nowrap; }
 .reading-actions { display: flex; justify-content: flex-end; gap: 22px; margin-top: 22px; }
 .reading-actions a, .reading-actions button { color: #70695e; background: transparent; border: 0; font-size: 10px; cursor: pointer; text-decoration: none; }
 .reading-actions a:hover, .reading-actions button:hover { color: var(--gold); }
@@ -172,6 +189,7 @@ button { color: inherit; }
 .delete-history, .rename-history { position: absolute; right: 0; top: 29px; border: 0; background: transparent; color: #504a40; cursor: pointer; }
 .rename-history { right: 24px; font-size: 10px; }
 .empty-history { margin-top: 50px; color: #5f5a51; font: 13px var(--serif); text-align: center; }
+.history-loading { color: #696257; text-align: center; font-size: 10px; padding: 16px; }
 .clear-history { border: 0; background: transparent; color: #765e52; padding: 15px; cursor: pointer; font-size: 10px; }
 .delete-account { border: 0; border-top: 1px solid #211f1a; background: transparent; color: #5f554f; padding: 16px; cursor: pointer; font-size: 9px; letter-spacing: .08em; }
 .site-footer { position: relative; z-index: 3; height: 82px; padding: 0 4.5vw; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #211f1a; color: #514d45; font-size: 9px; letter-spacing: .1em; }
