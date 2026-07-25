@@ -24,7 +24,7 @@ async function register(page: Page, username: string) {
 async function createQuestion(page: Page, question: string) {
   await page.getByRole("textbox", { name: "描述你的职场问题" }).fill(question);
   await page.getByRole("button", { name: "投入黑洞" }).click();
-  await expect(page.getByText("THE CARD PACK", { exact: true })).toBeVisible();
+  await expect(page.getByText("SEALED ORACLES", { exact: true })).toBeVisible();
 }
 
 test("注册、登录、四卡、停止追问、决定、历史与账号闭环", async ({ page }) => {
@@ -56,29 +56,33 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.locator('[data-testid="oracle-card"][data-state="ready"]')).toHaveCount(4, {
     timeout: 20_000,
   });
-  await expect(page.getByText("问题镜像", { exact: true })).toBeVisible();
+  await expect(page.getByText("所问之事的回声", { exact: true })).toBeVisible();
 
   const cards = page.getByTestId("oracle-card");
+  await expect(page.locator('[data-testid="oracle-card"][data-revealed="true"]')).toHaveCount(0);
   await cards.nth(0).click();
-  await expect(page.getByText("PRIVATE DIALOGUE", { exact: true })).toBeVisible();
+  await expect(cards.nth(0)).toHaveAttribute("data-revealed", "true");
+  await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
+  await cards.nth(0).click();
+  await expect(page.getByText(/THE ORACLE · 01/)).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByText("PRIVATE DIALOGUE", { exact: true })).toBeHidden();
+  await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
   await cards.nth(0).click();
-  const followup = page.locator(".followup-form textarea");
+  const followup = page.getByLabel("再求一示");
   await followup.fill("如果他只肯口头承诺，我最小的可逆动作是什么？");
   await followup.press("Enter");
-  await expect(page.getByRole("button", { name: "停止并保留 ↗" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "截断并保留" })).toBeVisible();
   await page.waitForTimeout(350);
-  await page.getByRole("button", { name: "停止并保留 ↗" }).click();
+  await page.getByRole("button", { name: "截断并保留" }).click();
   await expect(page.getByText("回答已停止", { exact: true })).toBeVisible();
 
-  const decision = page.getByPlaceholder("这里不生成结论，只留下你的判断。");
+  const decision = page.getByPlaceholder("神谕止于此，你的判断从这里开始。");
   await decision.fill("先书面确认三十天目标，再依据真实反馈决定。");
-  await page.getByRole("heading", { name: "听完他们之后，你如何决定？" }).click();
+  await page.getByRole("heading", { name: "写下你的判词" }).click();
   await expect(page.getByText("你的决定已自动收入卡牌包。")).toBeVisible();
 
   const exportPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "导出 Markdown" }).click();
+  await page.getByRole("link", { name: "抄录神谕" }).click();
   const download = await exportPromise;
   expect(download.suggestedFilename()).toContain(".md");
 
@@ -92,11 +96,11 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
     page.locator(".history-list h3").getByText("第一次重要选择", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: /第一次重要选择 2026/ }).click();
-  await expect(page.getByText("PRIVATE DIALOGUE", { exact: true })).toBeVisible();
+  await expect(page.getByText(/THE ORACLE · 01/)).toBeVisible();
   await expect(decision).toHaveValue("先书面确认三十天目标，再依据真实反馈决定。");
 
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "删除这组记录" }).click();
+  await page.getByRole("button", { name: "焚毁此卷" }).click();
   await expect(
     page.getByRole("heading", { name: "把你的困惑，交给不同的人生" }),
   ).toBeVisible();

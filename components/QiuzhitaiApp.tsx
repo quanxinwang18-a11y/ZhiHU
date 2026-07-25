@@ -86,26 +86,36 @@ function Icon({
 
 function AdvisorCard({
   advisor,
-  text,
   state,
+  revealed,
   selected,
   onClick,
   index,
 }: {
   advisor: Advisor;
-  text: string;
   state: CardState;
+  revealed: boolean;
   selected: boolean;
   onClick: () => void;
   index: number;
 }) {
+  const canReveal = state === "ready";
+  const actionLabel = !canReveal
+    ? state === "failed"
+      ? "这枚封印未能形成"
+      : "神谕正在封存"
+    : revealed
+      ? `进入 ${advisor.name} 的神谕`
+      : `显影第 ${index + 1} 张神谕牌`;
+
   return (
     <article
-      className={`oracle-card ${state} ${selected ? "selected" : ""}`}
+      className={`oracle-card ${state} ${revealed ? "revealed" : "sealed"} ${selected ? "selected" : ""}`}
       data-testid="oracle-card"
       data-advisor-id={advisor.id}
       data-card-id={advisor.cardId}
       data-state={state}
+      data-revealed={revealed ? "true" : "false"}
       style={
         {
           "--card-accent": advisor.accent,
@@ -113,6 +123,16 @@ function AdvisorCard({
         } as React.CSSProperties
       }
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      role="button"
+      tabIndex={canReveal ? 0 : -1}
+      aria-label={actionLabel}
+      aria-disabled={!canReveal}
     >
       <div className="card-index">0{index + 1}</div>
       <div className="card-art">
@@ -125,23 +145,41 @@ function AdvisorCard({
         />
       </div>
       <div className="card-grain" />
-      {state !== "ready" && (
-        <div className="card-loading">
+      <div className="card-seal" aria-hidden="true">
+        <div className="seal-geometry">
           <span />
-          <p>{state === "waiting" ? "等待引力" : "正在形成观点"}</p>
+          <i />
+          <i />
         </div>
-      )}
-      <div className="card-reading">
-        <p>{text || "观点正在抵达……"}</p>
+        <strong>
+          {state === "waiting"
+            ? "等待引力"
+            : state === "summoning"
+              ? "正在铸成封印"
+              : state === "failed"
+                ? "封印未成"
+                : revealed
+                  ? "神谕已经显影"
+                  : "神谕已经封存"}
+        </strong>
+        <small>
+          {state === "ready"
+            ? revealed
+              ? "再次选择 · 进入解读"
+              : "不要猜测来者 · 凭直觉选择"
+            : "不同立场仍在黑洞背面成形"}
+        </small>
       </div>
       <footer>
         <div>
-          <strong>{advisor.name}</strong>
-          <span>{advisor.epithet}</span>
+          <strong>{revealed ? advisor.name : "无名之牌"}</strong>
+          <span>{revealed ? advisor.epithet : "THE SEALED VOICE"}</span>
         </div>
-        <em>{advisor.label}</em>
+        <em>{revealed ? "进入神谕" : "轻触显影"}</em>
       </footer>
-      <div className="card-disclaimer">AI 模拟观点</div>
+      <div className="card-disclaimer">
+        {revealed ? "AI 模拟启示" : "SEALED"}
+      </div>
     </article>
   );
 }
@@ -159,6 +197,7 @@ export function QiuzhitaiApp() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [selectedAdvisor, setSelectedAdvisor] = useState<string | null>(null);
+  const [revealedAdvisorIds, setRevealedAdvisorIds] = useState<string[]>([]);
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [states, setStates] = useState<Record<string, CardState>>({});
   const [followup, setFollowup] = useState("");
@@ -352,8 +391,8 @@ export function QiuzhitaiApp() {
         });
         setNotice(
           wasAborted
-            ? `${advisor.name} 的生成已停止，已保留当前文字。`
-            : `${advisor.name} 的追问中断，已保留抵达的文字。`,
+            ? `${advisor.name} 的续示已截断，当前文字已经封存。`
+            : `${advisor.name} 的续示中断，已保留抵达的文字。`,
         );
         setStates((current) => ({ ...current, [advisor.id]: "ready" }));
       } else {
@@ -361,8 +400,8 @@ export function QiuzhitaiApp() {
         setStates((current) => ({ ...current, [advisor.id]: "failed" }));
         setNotice(
           requestFailed
-            ? `${advisor.name} 暂时没有回应，其他卡牌不受影响。`
-            : `${advisor.name} 的连接已中断，其他卡牌不受影响。`,
+            ? `这枚封印暂时没有形成，其他神谕不受影响。`
+            : `这枚封印与黑洞失去连接，其他神谕不受影响。`,
         );
       }
       await refreshPack(targetPack.id);
@@ -381,6 +420,7 @@ export function QiuzhitaiApp() {
     setWorking(true);
     setPack(null);
     setSelectedAdvisor(null);
+    setRevealedAdvisorIds([]);
     setTexts({});
     try {
       const response = await fetch("/api/packs", {
@@ -452,6 +492,7 @@ export function QiuzhitaiApp() {
     const selectedCard = data.advisors.find(
       (advisor) => advisor.cardId === data.selectedCardId,
     );
+    setRevealedAdvisorIds(selectedCard ? [selectedCard.id] : []);
     setSelectedAdvisor(selectedCard?.id || null);
     setHistoryOpen(false);
   }
@@ -474,6 +515,7 @@ export function QiuzhitaiApp() {
         Object.fromEntries(next.advisors.map((advisor) => [advisor.id, "waiting"])),
       );
       setSelectedAdvisor(null);
+      setRevealedAdvisorIds([]);
       const results = await Promise.all(
         next.advisors.map((advisor) => streamAdvisor(next, advisor)),
       );
@@ -529,6 +571,11 @@ export function QiuzhitaiApp() {
 
   async function selectAdvisor(advisor: Advisor) {
     if (!pack || advisor.status !== "ready") return;
+    if (!revealedAdvisorIds.includes(advisor.id)) {
+      setRevealedAdvisorIds((current) => [...current, advisor.id]);
+      setNotice("一枚无名之牌已经显影。再次选择，进入它的神谕。");
+      return;
+    }
     setSelectedAdvisor(advisor.id);
     await fetch(`/api/packs/${pack.id}`, {
       method: "PATCH",
@@ -547,6 +594,7 @@ export function QiuzhitaiApp() {
     setPack(null);
     setQuestion("");
     setSelectedAdvisor(null);
+    setRevealedAdvisorIds([]);
     setTexts({});
     setStates({});
     setDecision("");
@@ -555,7 +603,7 @@ export function QiuzhitaiApp() {
   }
 
   async function deletePack(id: string) {
-    if (!window.confirm("删除这组卡牌及全部追问记录？")) return;
+    if (!window.confirm("焚毁这组神谕及全部续示记录？")) return;
     await fetch(`/api/packs/${id}`, { method: "DELETE" });
     if (pack?.id === id) {
       setPack(null);
@@ -595,7 +643,7 @@ export function QiuzhitaiApp() {
 
   async function deleteAccount() {
     const password = window.prompt(
-      "输入当前密码以永久删除本地账号、卡牌包和全部对话：",
+      "输入当前密码以永久删除本地账号、神谕与全部续示：",
     );
     if (!password) return;
     const response = await fetch("/api/account", {
@@ -670,18 +718,26 @@ export function QiuzhitaiApp() {
 
       <section className="question-stage">
         <p className="eyebrow">ONE QUESTION · DIFFERENT TRUTHS</p>
-        <h1>{pack ? "分歧已经显影" : "把你的困惑，交给不同的人生"}</h1>
+        <h1>
+          {pack
+            ? working
+              ? "答案尚未显形"
+              : "神谕等待选择"
+            : "把你的困惑，交给不同的人生"}
+        </h1>
         <p className="stage-lead">
           {pack
-            ? "没有唯一正确的职场答案。阅读冲突，保留你的判断。"
-            : "描述真实处境。四个立场不同的顾问，将同时回应。"}
+            ? working
+              ? "不同立场正在穿过黑洞，被封存于四张无名之牌。"
+              : "先凭直觉选择一张。牌面只会显露来者，不会替你决定。"
+            : "描述真实处境。不同立场将被封入四张无名之牌。"}
         </p>
         {pack ? (
           <div className="question-frozen">
             <p>{pack.question}</p>
             {pack.problemMirror && (
               <blockquote>
-                <span>问题镜像</span>
+                <span>所问之事的回声</span>
                 {pack.problemMirror}
               </blockquote>
             )}
@@ -714,7 +770,7 @@ export function QiuzhitaiApp() {
               <span>⌘ / Ctrl + Enter · 随机 {count} 个视角</span>
             </div>
             <button className="consult-button" disabled={working} type="submit">
-              <span>{working ? "观点正在穿过黑洞" : "投入黑洞"}</span>
+              <span>{working ? "封印正在铸成" : "投入黑洞"}</span>
               <i />
             </button>
           </form>
@@ -763,8 +819,13 @@ export function QiuzhitaiApp() {
         <section className="pack-stage">
           <div className="pack-heading">
             <div>
-              <p className="eyebrow">THE CARD PACK</p>
+              <p className="eyebrow">SEALED ORACLES</p>
               <h2>{pack.title}</h2>
+              <p className="pack-instruction">
+                {working
+                  ? "请等待封印完成。"
+                  : "第一次选择显露来者，第二次选择进入神谕。"}
+              </p>
             </div>
             <div className="pack-tools">
               {working && (
@@ -775,7 +836,7 @@ export function QiuzhitaiApp() {
                     aborters.current.forEach((controller) => controller.abort())
                   }
                 >
-                  停止生成
+                  停止封印
                 </button>
               )}
               <button
@@ -824,8 +885,8 @@ export function QiuzhitaiApp() {
               <AdvisorCard
                 key={advisor.id}
                 advisor={advisor}
-                text={texts[advisor.id] || ""}
                 state={states[advisor.id] || "waiting"}
+                revealed={revealedAdvisorIds.includes(advisor.id)}
                 selected={selectedAdvisor === advisor.id}
                 onClick={() => void selectAdvisor(advisor)}
                 index={index}
@@ -844,23 +905,26 @@ export function QiuzhitaiApp() {
             aria-label="收起顾问手稿"
             onClick={() => setSelectedAdvisor(null)}
           >
-            ⌃
+            封存
           </button>
           <header>
             <div className="advisor-monogram">{selected.name.slice(0, 1)}</div>
             <div>
-              <p className="eyebrow">PRIVATE DIALOGUE</p>
-              <h2>{selected.name}</h2>
-              <span>{selected.epithet} · AI 模拟</span>
+              <p className="eyebrow">THE ORACLE · {String(pack.advisors.findIndex((advisor) => advisor.id === selected.id) + 1).padStart(2, "0")}</p>
+              <h2>来自 {selected.name} 的神谕</h2>
+              <span>{selected.epithet} · 基于公开思想的 AI 演绎</span>
             </div>
           </header>
-          <div className="conversation">
+          <div className="oracle-scripture">
             <p className="original-question">
-              <small>你的原始问题</small>
+              <small>THE QUESTION · 所问之事</small>
               {pack.question}
             </p>
-            <div className="message assistant initial-opinion">
-              <span>{selected.name}</span>
+            <article className="oracle-inscription initial-oracle">
+              <header>
+                <span>PRIMARY READING</span>
+                <strong>主神谕</strong>
+              </header>
               <div className="markdown-body">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -869,10 +933,18 @@ export function QiuzhitaiApp() {
                   {selected.initialOpinion}
                 </ReactMarkdown>
               </div>
-            </div>
+            </article>
             {selectedMessages.map((message) => (
-              <div className={`message ${message.role}`} key={message.id}>
-                <span>{message.role === "user" ? "你" : selected.name}</span>
+              <article
+                className={`oracle-inscription ${message.role === "user" ? "oracle-question" : "oracle-echo"}`}
+                key={message.id}
+              >
+                <header>
+                  <span>
+                    {message.role === "user" ? "ANOTHER QUESTION" : "AFTERWORD"}
+                  </span>
+                  <strong>{message.role === "user" ? "再问" : "续示"}</strong>
+                </header>
                 <div className="markdown-body">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -887,19 +959,27 @@ export function QiuzhitaiApp() {
                     <small className="stopped-label">回答中断</small>
                   )}
                 </div>
-              </div>
+              </article>
             ))}
             {states[selected.id] === "summoning" && (
-              <div className="message assistant streaming">
-                <span>{selected.name}</span>
+              <article className="oracle-inscription oracle-echo streaming">
+                <header>
+                  <span>AFTERWORD</span>
+                  <strong>续示正在显形</strong>
+                </header>
                 <div className="markdown-body">
                   <p>{texts[selected.id]}<i /></p>
                 </div>
-              </div>
+              </article>
             )}
           </div>
-          <form className="followup-form" onSubmit={askFollowup}>
+          <form className="oracle-inquiry" onSubmit={askFollowup}>
+            <label htmlFor="oracle-followup">
+              <span>ASK AGAIN</span>
+              再求一示
+            </label>
             <textarea
+              id="oracle-followup"
               value={followup}
               onChange={(event) => setFollowup(event.target.value)}
               onKeyDown={(event) => {
@@ -910,36 +990,36 @@ export function QiuzhitaiApp() {
               }}
               disabled={states[selected.id] === "summoning"}
               maxLength={1000}
-              placeholder={`继续追问 ${selected.name}。这段对话不会被其他顾问看见。`}
+              placeholder="若仍有未明之处，将一个更具体的问题写在这里。每枚神谕彼此隔绝。"
             />
             {states[selected.id] === "summoning" ? (
               <button type="button" onClick={stopSelectedGeneration}>
-                停止并保留 ↗
+                截断并保留
               </button>
             ) : (
               <button type="submit" disabled={!followup.trim()}>
-                继续追问 ↗
+                请求续示
               </button>
             )}
           </form>
           <div className="decision-area">
             <div>
-              <p className="eyebrow">YOUR DECISION</p>
-              <h3>听完他们之后，你如何决定？</h3>
+              <p className="eyebrow">MY VERDICT</p>
+              <h3>写下你的判词</h3>
             </div>
             <textarea
               value={decision}
               onChange={(event) => scheduleDecisionSave(event.target.value)}
               onBlur={() => pack && void persistDecision(pack.id, decision, true)}
               maxLength={1000}
-              placeholder="这里不生成结论，只留下你的判断。"
+              placeholder="神谕止于此，你的判断从这里开始。"
             />
             <span className="autosave-state">自动保存</span>
           </div>
           <div className="reading-actions">
-            <a href={`/api/packs/${pack.id}/export`}>导出 Markdown</a>
+            <a href={`/api/packs/${pack.id}/export`}>抄录神谕</a>
             <button type="button" onClick={() => deletePack(pack.id)}>
-              删除这组记录
+              焚毁此卷
             </button>
           </div>
         </section>
