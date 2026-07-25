@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import {
+  CSSProperties,
   FormEvent,
   useCallback,
   useEffect,
@@ -208,6 +209,7 @@ export function QiuzhitaiApp() {
   const [error, setError] = useState("");
   const [soundOn, setSoundOn] = useState(false);
   const [notice, setNotice] = useState("");
+  const [burningPackId, setBurningPackId] = useState<string | null>(null);
   const aborters = useRef(new Map<string, AbortController>());
   const decisionTimer = useRef<number | undefined>(undefined);
   const packStageRef = useRef<HTMLElement>(null);
@@ -623,6 +625,39 @@ export function QiuzhitaiApp() {
     await loadHistory(false);
   }
 
+  async function burnCurrentPack(id: string) {
+    if (burningPackId) return;
+    if (!window.confirm("焚毁后无法恢复。让这卷神谕化为灰烬？")) return;
+
+    setNotice("");
+    setBurningPackId(id);
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    await new Promise((resolve) =>
+      window.setTimeout(resolve, reducedMotion ? 180 : 2700),
+    );
+
+    const response = await fetch(`/api/packs/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      setBurningPackId(null);
+      setNotice("火焰熄灭了，这卷神谕仍被保留。");
+      return;
+    }
+
+    setPack(null);
+    setQuestion("");
+    setSelectedAdvisor(null);
+    setRevealedAdvisorIds([]);
+    setTexts({});
+    setStates({});
+    setDecision("");
+    setFollowup("");
+    setBurningPackId(null);
+    await loadHistory(false);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
   async function renamePack(item: Pack) {
     const title = window.prompt("为这组卡牌包命名", item.title)?.trim();
     if (!title || title === item.title) return;
@@ -705,7 +740,9 @@ export function QiuzhitaiApp() {
     <main className={`oracle-shell ${pack ? "has-pack" : ""}`}>
       <OracleAtmosphere
         phase={
-          selected
+          burningPackId
+            ? "burning"
+            : selected
             ? "reading"
             : pack
               ? working
@@ -713,7 +750,7 @@ export function QiuzhitaiApp() {
                 : "sealed"
               : "question"
         }
-        energy={working ? 1 : Math.min(1, question.length / 420)}
+        energy={burningPackId || working ? 1 : Math.min(1, question.length / 420)}
       />
       <header className="topbar">
         <button
@@ -919,12 +956,21 @@ export function QiuzhitaiApp() {
       )}
 
       {pack && selected && selected.status === "ready" && (
-        <div className="reading-layer" onMouseDown={() => setSelectedAdvisor(null)}>
-        <section className="reading-room" onMouseDown={(event) => event.stopPropagation()}>
+        <div
+          className={`reading-layer ${burningPackId === pack.id ? "immolating" : ""}`}
+          onMouseDown={() => {
+            if (!burningPackId) setSelectedAdvisor(null);
+          }}
+        >
+        <section
+          className={`reading-room ${burningPackId === pack.id ? "burning-manuscript" : ""}`}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
           <button
             className="close-manuscript"
             type="button"
             aria-label="收起顾问手稿"
+            disabled={burningPackId === pack.id}
             onClick={() => setSelectedAdvisor(null)}
           >
             封存
@@ -1010,7 +1056,10 @@ export function QiuzhitaiApp() {
                   event.currentTarget.form?.requestSubmit();
                 }
               }}
-              disabled={states[selected.id] === "summoning"}
+              disabled={
+                states[selected.id] === "summoning" ||
+                burningPackId === pack.id
+              }
               maxLength={1000}
               placeholder="若仍有未明之处，将一个更具体的问题写在这里。每枚神谕彼此隔绝。"
             />
@@ -1019,7 +1068,10 @@ export function QiuzhitaiApp() {
                 截断并保留
               </button>
             ) : (
-              <button type="submit" disabled={!followup.trim()}>
+              <button
+                type="submit"
+                disabled={!followup.trim() || burningPackId === pack.id}
+              >
                 请求续示
               </button>
             )}
@@ -1033,18 +1085,72 @@ export function QiuzhitaiApp() {
               value={decision}
               onChange={(event) => scheduleDecisionSave(event.target.value)}
               onBlur={() => pack && void persistDecision(pack.id, decision, true)}
+              disabled={burningPackId === pack.id}
               maxLength={1000}
               placeholder="神谕止于此，你的判断从这里开始。"
             />
             <span className="autosave-state">自动保存</span>
           </div>
           <div className="reading-actions">
-            <a href={`/api/packs/${pack.id}/export`}>抄录神谕</a>
-            <button type="button" onClick={() => deletePack(pack.id)}>
-              焚毁此卷
+            <a
+              aria-disabled={burningPackId === pack.id}
+              href={burningPackId === pack.id ? undefined : `/api/packs/${pack.id}/export`}
+            >
+              抄录神谕
+            </a>
+            <button
+              type="button"
+              disabled={burningPackId === pack.id}
+              onClick={() => void burnCurrentPack(pack.id)}
+            >
+              {burningPackId === pack.id ? "焚烧中" : "焚毁此卷"}
             </button>
           </div>
         </section>
+        {burningPackId === pack.id && (
+          <div
+            className="immolation-layer"
+            role="status"
+            aria-label="神谕正在化为飞灰"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="burn-scorch" aria-hidden="true" />
+            <div className="flame-ribbon" aria-hidden="true">
+              {Array.from({ length: 20 }, (_, index) => (
+                <i
+                  key={index}
+                  style={
+                    {
+                      "--flame-x": `${4 + index * 4.8}%`,
+                      "--flame-delay": `${(index % 7) * -0.09}s`,
+                      "--flame-height": `${100 + (index % 5) * 34}px`,
+                    } as CSSProperties
+                  }
+                />
+              ))}
+            </div>
+            <div className="ash-field" aria-hidden="true">
+              {Array.from({ length: 64 }, (_, index) => (
+                <span
+                  key={index}
+                  style={
+                    {
+                      "--ash-x": `${52 + ((index * 37) % 47)}%`,
+                      "--ash-drift": `${-180 + ((index * 71) % 360)}px`,
+                      "--ash-delay": `${(index % 16) * 0.055}s`,
+                      "--ash-duration": `${1.55 + (index % 9) * 0.12}s`,
+                      "--ash-size": `${2 + (index % 5)}px`,
+                    } as CSSProperties
+                  }
+                />
+              ))}
+            </div>
+            <p>
+              <span>THE LAST RITE</span>
+              神谕正在化为飞灰
+            </p>
+          </div>
+        )}
         </div>
       )}
 

@@ -208,6 +208,107 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .reading-actions { display: flex; justify-content: flex-end; gap: 22px; margin-top: 22px; }
 .reading-actions a, .reading-actions button { color: #70695e; background: transparent; border: 0; font-size: 10px; cursor: pointer; text-decoration: none; }
 .reading-actions a:hover, .reading-actions button:hover { color: var(--gold); }
+.reading-actions a[aria-disabled="true"], .reading-actions button:disabled { opacity: .24; pointer-events: none; }
+
+@property --burn-radius {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+.reading-layer.immolating { overflow: hidden; cursor: wait; background: rgba(4,2,1,.86); backdrop-filter: blur(6px) saturate(.72); }
+.burning-manuscript {
+  --burn-radius: 0%;
+  transform-origin: 78% 94%;
+  will-change: opacity, transform, filter, -webkit-mask-image;
+  -webkit-mask-image: radial-gradient(circle at 78% 94%, transparent 0 var(--burn-radius), rgba(0,0,0,.08) calc(var(--burn-radius) + 1.2%), #000 calc(var(--burn-radius) + 5%));
+  mask-image: radial-gradient(circle at 78% 94%, transparent 0 var(--burn-radius), rgba(0,0,0,.08) calc(var(--burn-radius) + 1.2%), #000 calc(var(--burn-radius) + 5%));
+  animation: manuscriptCombust 2.7s cubic-bezier(.5,0,.2,1) forwards;
+}
+.burning-manuscript::after {
+  content: "";
+  position: fixed;
+  z-index: 12;
+  right: -16vw;
+  bottom: -25vw;
+  width: 66vw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, transparent 0 48%, rgba(255,221,139,.95) 49%, rgba(221,90,22,.7) 50.2%, rgba(30,8,2,.62) 52.5%, transparent 56%);
+  filter: blur(6px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: charEdge 2.7s cubic-bezier(.5,0,.2,1) forwards;
+}
+@keyframes manuscriptCombust {
+  0% { --burn-radius: 0%; opacity: 1; filter: sepia(0) contrast(1) brightness(1); transform: scale(1); }
+  12% { --burn-radius: 2%; filter: sepia(.25) contrast(1.08) brightness(.95); }
+  55% { --burn-radius: 58%; opacity: .92; filter: sepia(.9) contrast(1.42) brightness(.58); transform: scale(.997); }
+  84% { opacity: .52; filter: sepia(1) contrast(1.8) brightness(.28); }
+  100% { --burn-radius: 158%; opacity: 0; filter: sepia(1) contrast(2.2) brightness(.08); transform: scale(.975) translateY(8px); }
+}
+@keyframes charEdge {
+  0%, 5% { width: 0; opacity: 0; }
+  14% { width: 8vw; opacity: .88; }
+  72% { width: 94vw; opacity: .78; }
+  100% { width: 145vw; opacity: 0; }
+}
+.immolation-layer { position: fixed; z-index: 20; inset: 0; overflow: hidden; pointer-events: auto; isolation: isolate; background: radial-gradient(circle at 78% 94%, rgba(107,28,4,.2), transparent 24%); animation: immolationVeil 2.7s ease-out forwards; }
+.burn-scorch {
+  position: absolute;
+  right: -10vw;
+  bottom: -19vw;
+  width: 58vw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, transparent 0 47%, rgba(255,229,167,.95) 48%, rgba(230,119,37,.86) 49.5%, rgba(117,35,5,.68) 52%, transparent 55%),
+    repeating-conic-gradient(from 14deg, transparent 0 5deg, rgba(222,117,40,.22) 7deg, transparent 11deg);
+  filter: blur(5px);
+  mix-blend-mode: screen;
+  transform: scale(.04);
+  opacity: 0;
+  animation: burnFront 2.7s cubic-bezier(.48,0,.2,1) forwards;
+}
+.flame-ribbon { position: absolute; z-index: 3; left: 51%; right: 0; bottom: -4px; height: 44vh; filter: saturate(.9) blur(.35px); mix-blend-mode: screen; opacity: 0; animation: flameField 2.7s ease-out forwards; }
+.flame-ribbon i {
+  position: absolute;
+  left: var(--flame-x);
+  bottom: -34px;
+  width: clamp(18px, 2.4vw, 38px);
+  height: var(--flame-height);
+  transform-origin: 50% 100%;
+  border-radius: 48% 48% 32% 32%;
+  background: radial-gradient(ellipse at 50% 88%, #fff4c7 0 5%, #eeb65e 16%, rgba(217,77,12,.78) 45%, rgba(100,18,2,.18) 66%, transparent 73%);
+  filter: blur(2.2px);
+  animation: flameTongue .54s var(--flame-delay) cubic-bezier(.4,0,.6,1) infinite alternate;
+}
+.ash-field { position: absolute; z-index: 4; inset: 0; overflow: hidden; }
+.ash-field span {
+  position: absolute;
+  left: var(--ash-x);
+  bottom: -12px;
+  width: var(--ash-size);
+  height: calc(var(--ash-size) * .55);
+  border-radius: 48% 12% 44% 18%;
+  background: #bc9c6c;
+  box-shadow: 0 0 6px rgba(228,139,60,.42);
+  opacity: 0;
+  animation: ashRise var(--ash-duration) var(--ash-delay) cubic-bezier(.24,.58,.24,1) forwards;
+}
+.immolation-layer > p { position: absolute; z-index: 6; left: 50%; bottom: 9vh; margin: 0; transform: translateX(-50%); color: rgba(223,208,182,.74); font: 400 13px/1.8 var(--serif); letter-spacing: .18em; text-align: center; white-space: nowrap; text-shadow: 0 2px 24px #000; animation: lastRite 2.7s ease forwards; }
+.immolation-layer > p span { display: block; margin-bottom: 8px; color: rgba(210,138,72,.72); font: 8px var(--sans); letter-spacing: .34em; }
+@keyframes immolationVeil { 0% { background-color: rgba(0,0,0,0); } 72% { background-color: rgba(13,3,0,.32); } 100% { background-color: rgba(3,2,1,.86); } }
+@keyframes burnFront { 0%, 4% { transform: scale(.03) rotate(-7deg); opacity: 0; } 13% { opacity: .94; } 78% { opacity: .72; } 100% { transform: scale(2.55) rotate(9deg); opacity: 0; } }
+@keyframes flameField { 0%, 5% { opacity: 0; transform: translateY(35px); } 18% { opacity: .88; } 72% { opacity: .62; } 100% { opacity: 0; transform: translateY(-8vh); } }
+@keyframes flameTongue { from { transform: translate3d(-4px,10px,0) scaleX(.72) rotate(-5deg); } to { transform: translate3d(5px,-20px,0) scaleX(1.12) rotate(6deg); } }
+@keyframes ashRise {
+  0% { opacity: 0; transform: translate3d(0,0,0) rotate(0deg) scale(.7); }
+  16% { opacity: .88; }
+  72% { opacity: .58; }
+  100% { opacity: 0; transform: translate3d(var(--ash-drift),-112vh,0) rotate(720deg) scale(.22); }
+}
+@keyframes lastRite { 0%, 9% { opacity: 0; transform: translate(-50%,12px); } 22%, 68% { opacity: 1; transform: translate(-50%,0); } 100% { opacity: 0; transform: translate(-50%,-12px); } }
 .toast { position: fixed; z-index: 110; bottom: 34px; left: 50%; transform: translateX(-50%); border: 0; border-radius: 50%; background: radial-gradient(ellipse, rgba(72,57,34,.92), rgba(13,12,9,.94) 66%); color: var(--bone); padding: 16px 28px; box-shadow: 0 15px 60px #000; cursor: pointer; font-size: 11px; }
 .history-drawer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
 .history-drawer.open { pointer-events: auto; }

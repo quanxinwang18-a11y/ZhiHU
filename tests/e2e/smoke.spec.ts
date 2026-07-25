@@ -141,8 +141,14 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "焚毁此卷" }).click();
   await expect(
-    page.getByRole("heading", { name: "把你的困惑，交给不同的人生" }),
+    page.getByRole("status", { name: "神谕正在化为飞灰" }),
   ).toBeVisible();
+  await expect(page.locator(".reading-room")).toHaveClass(
+    /burning-manuscript/,
+  );
+  await expect(
+    page.getByRole("heading", { name: "把你的困惑，交给不同的人生" }),
+  ).toBeVisible({ timeout: 5_000 });
 
   await createQuestion(
     page,

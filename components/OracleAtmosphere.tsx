@@ -17,7 +17,8 @@ export type OraclePhase =
   | "question"
   | "summoning"
   | "sealed"
-  | "reading";
+  | "reading"
+  | "burning";
 
 const phaseValue: Record<OraclePhase, number> = {
   auth: 0,
@@ -25,6 +26,7 @@ const phaseValue: Record<OraclePhase, number> = {
   summoning: 0.62,
   sealed: 0.9,
   reading: 1.18,
+  burning: 1.48,
 };
 
 const vertexShader = `
@@ -130,6 +132,20 @@ const fragmentShader = `
 
     float readingVeil = smoothstep(1.0, 1.18, uPhase);
     color = mix(color, color * 0.42 + vec3(0.016, 0.014, 0.012), readingVeil * 0.74);
+
+    float burnPhase = smoothstep(1.22, 1.46, uPhase);
+    float burnPulse = 0.5 + 0.5 * sin(uTime * 8.5 + angle * 7.0);
+    float emberField = pow(valueNoise(p * 24.0 + vec2(0.0, uTime * 1.4)), 9.0);
+    float fireHalo = exp(-abs(radius - (0.235 + burnPulse * 0.018)) * 19.0);
+    color += burnPhase * (
+      vec3(1.25, 0.23, 0.018) * fireHalo * 0.18 +
+      vec3(0.95, 0.47, 0.09) * emberField * 0.2
+    );
+    color = mix(
+      color,
+      vec3(0.045, 0.015, 0.006) + color * 0.55,
+      burnPhase * 0.45
+    );
 
     float vignette = smoothstep(1.12, 0.18, length(p * vec2(0.76, 1.0)));
     color *= 0.5 + vignette * 0.5;
@@ -252,18 +268,18 @@ export function OracleAtmosphere({
         />
         {!reducedMotion && (
           <Sparkles
-            count={phase === "summoning" ? 96 : 58}
+            count={phase === "burning" ? 130 : phase === "summoning" ? 96 : 58}
             scale={[7, 4, 2]}
             size={0.85}
-            speed={phase === "summoning" ? 0.14 : 0.055}
-            color="#c8b38e"
-            opacity={phase === "reading" ? 0.08 : 0.18}
+            speed={phase === "burning" ? 0.2 : phase === "summoning" ? 0.14 : 0.055}
+            color={phase === "burning" ? "#e17a31" : "#c8b38e"}
+            opacity={phase === "burning" ? 0.28 : phase === "reading" ? 0.08 : 0.18}
           />
         )}
         <EffectComposer multisampling={0}>
           <Bloom
             mipmapBlur
-            intensity={phase === "summoning" ? 0.85 : 0.52}
+            intensity={phase === "burning" ? 1.1 : phase === "summoning" ? 0.85 : 0.52}
             luminanceThreshold={0.18}
             luminanceSmoothing={0.72}
           />
