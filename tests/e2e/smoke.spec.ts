@@ -3,6 +3,9 @@ import { expect, Page, test } from "@playwright/test";
 test.describe.configure({ mode: "serial" });
 
 const password = "Strong!2026";
+const runId = Date.now().toString(36).slice(-8);
+const primaryUsername = `验收${runId}`;
+const boundaryUsername = `边界${runId}`;
 
 async function register(page: Page, username: string) {
   await page.goto("/");
@@ -58,12 +61,33 @@ async function register(page: Page, username: string) {
 
 async function createQuestion(page: Page, question: string) {
   await page.getByRole("textbox", { name: "描述你的职场问题" }).fill(question);
-  await page.getByRole("button", { name: "投入黑洞" }).click();
-  await expect(page.getByText("SEALED ORACLES", { exact: true })).toBeVisible();
+  const horizon = page.getByRole("button", {
+    name: "长按使问题越过边界",
+  });
+  const bounds = await horizon.boundingBox();
+  if (!bounds) throw new Error("事件视界不可见");
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(180);
+  await page.mouse.up();
+  await expect(
+    page.getByRole("textbox", { name: "描述你的职场问题" }),
+  ).toHaveValue(question);
+  await page.mouse.down();
+  await page.waitForTimeout(980);
+  await page.mouse.up();
+  await expect(page.locator(".spectrum-signature")).toContainText(
+    "SEALED ORACLES",
+  );
+  await expect(page.locator(".oracle-shell")).toHaveAttribute(
+    "data-spectrum",
+    /^(obsidian|lunar|ziwei|calamity|jade)$/,
+  );
+  await expect(page.locator(".spectrum-signature span")).toBeVisible();
 }
 
 test("注册、登录、四卡、停止追问、决定、历史与账号闭环", async ({ page }) => {
-  await register(page, "完整验收用户");
+  await register(page, primaryUsername);
   const sessionCookie = (await page.context().cookies()).find((cookie) =>
     cookie.name.includes("session_token"),
   );
@@ -76,7 +100,7 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
 
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page.getByRole("button", { name: "进入求知台" })).toBeVisible();
-  await page.getByLabel("用户名", { exact: true }).fill("完整验收用户");
+  await page.getByLabel("用户名", { exact: true }).fill(primaryUsername);
   await page.getByLabel("密码", { exact: true }).fill(password);
   await page.getByRole("button", { name: "进入求知台" }).click();
   await expect(
@@ -175,7 +199,7 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
 
 test("支持八卡并行、受控单卡失败移除和一张重抽", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await register(page, "边界验收用户");
+  await register(page, boundaryUsername);
   await page.getByRole("button", { name: "设置抽取数量" }).click();
   await page.getByRole("button", { name: "抽取 8 张" }).click();
   await createQuestion(

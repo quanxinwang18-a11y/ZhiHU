@@ -94,6 +94,8 @@ export function ensureBusinessSchema() {
       title TEXT NOT NULL,
       question TEXT NOT NULL,
       problem_mirror TEXT,
+      visual_spectrum TEXT NOT NULL DEFAULT 'obsidian'
+        CHECK(visual_spectrum IN ('obsidian', 'lunar', 'ziwei', 'calamity', 'jade')),
       requested_card_count INTEGER NOT NULL CHECK(requested_card_count BETWEEN 1 AND 8),
       status TEXT NOT NULL CHECK(status IN ('generating', 'ready', 'empty')),
       selected_card_id TEXT,
@@ -136,6 +138,17 @@ export function ensureBusinessSchema() {
     CREATE INDEX IF NOT EXISTS messages_card_idx
       ON messages(card_id, sequence);
   `);
+
+  const packColumns = database
+    .prepare("PRAGMA table_info(advice_packs)")
+    .all() as { name: string }[];
+  if (!packColumns.some((column) => column.name === "visual_spectrum")) {
+    database.exec(`
+      ALTER TABLE advice_packs
+      ADD COLUMN visual_spectrum TEXT NOT NULL DEFAULT 'obsidian'
+        CHECK(visual_spectrum IN ('obsidian', 'lunar', 'ziwei', 'calamity', 'jade'))
+    `);
+  }
 }
 
 ensureBusinessSchema();

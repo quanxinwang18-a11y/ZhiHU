@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import {
   CSSProperties,
   FormEvent,
+  PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -17,6 +18,11 @@ import {
 } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { startSound, stopSound } from "@/lib/sound";
+import {
+  normalizeSpectrumId,
+  SPECTRA,
+  type SpectrumId,
+} from "@/lib/spectra";
 
 const OracleAtmosphere = dynamic(
   () =>
@@ -52,6 +58,7 @@ type Pack = {
   title: string;
   question: string;
   problemMirror: string;
+  visualSpectrum: SpectrumId;
   requestedCardCount: number;
   status: "generating" | "ready" | "empty";
   selectedCardId: string | null;
@@ -210,13 +217,29 @@ export function QiuzhitaiApp() {
   const [soundOn, setSoundOn] = useState(false);
   const [notice, setNotice] = useState("");
   const [burningPackId, setBurningPackId] = useState<string | null>(null);
+  const [holdingQuestion, setHoldingQuestion] = useState(false);
+  const [ingestingQuestion, setIngestingQuestion] = useState(false);
   const aborters = useRef(new Map<string, AbortController>());
   const decisionTimer = useRef<number | undefined>(undefined);
+  const holdTimer = useRef<number | undefined>(undefined);
+  const ingestionTimer = useRef<number | undefined>(undefined);
   const packStageRef = useRef<HTMLElement>(null);
 
   const selected = pack?.advisors.find(
     (advisor) => advisor.id === selectedAdvisor,
   );
+  const spectrum = SPECTRA[normalizeSpectrumId(pack?.visualSpectrum)];
+  const spectrumStyle = {
+    "--ink": spectrum.void,
+    "--ink-deep": spectrum.voidDeep,
+    "--ink-warm": spectrum.atmosphere,
+    "--gold": spectrum.primary,
+    "--gold-deep": spectrum.primaryDeep,
+    "--bright": spectrum.secondary,
+    "--spectrum-primary": spectrum.primary,
+    "--spectrum-secondary": spectrum.secondary,
+    "--spectrum-spark": spectrum.spark,
+  } as CSSProperties;
   const selectedMessages = useMemo(
     () =>
       (pack?.messages || []).filter(
@@ -270,6 +293,8 @@ export function QiuzhitaiApp() {
     return () => {
       window.clearTimeout(timer);
       if (decisionTimer.current) window.clearTimeout(decisionTimer.current);
+      if (holdTimer.current) window.clearTimeout(holdTimer.current);
+      if (ingestionTimer.current) window.clearTimeout(ingestionTimer.current);
       controllers.forEach((controller) => controller.abort());
     };
   }, [checkSession]);
@@ -479,7 +504,41 @@ export function QiuzhitaiApp() {
       );
     } finally {
       setWorking(false);
+      setIngestingQuestion(false);
     }
+  }
+
+  function cancelQuestionHold() {
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = undefined;
+    setHoldingQuestion(false);
+  }
+
+  function beginQuestionIngestion(form: HTMLFormElement | null) {
+    if (!form || !question.trim() || working || ingestingQuestion) return;
+    cancelQuestionHold();
+    setIngestingQuestion(true);
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.clearTimeout(ingestionTimer.current);
+    ingestionTimer.current = window.setTimeout(
+      () => form.requestSubmit(),
+      reducedMotion ? 60 : 720,
+    );
+  }
+
+  function beginQuestionHold(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!question.trim() || working || ingestingQuestion) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    window.clearTimeout(holdTimer.current);
+    setHoldingQuestion(true);
+    const form = event.currentTarget.form;
+    holdTimer.current = window.setTimeout(
+      () => beginQuestionIngestion(form),
+      900,
+    );
   }
 
   async function openPack(id: string) {
@@ -737,11 +796,17 @@ export function QiuzhitaiApp() {
   }
 
   return (
-    <main className={`oracle-shell ${pack ? "has-pack" : ""}`}>
+    <main
+      className={`oracle-shell ${pack ? "has-pack" : ""}`}
+      data-spectrum={spectrum.id}
+      style={spectrumStyle}
+    >
       <OracleAtmosphere
         phase={
           burningPackId
             ? "burning"
+            : ingestingQuestion
+              ? "summoning"
             : selected
             ? "reading"
             : pack
@@ -750,7 +815,12 @@ export function QiuzhitaiApp() {
                 : "sealed"
               : "question"
         }
-        energy={burningPackId || working ? 1 : Math.min(1, question.length / 420)}
+        energy={
+          burningPackId || working || holdingQuestion || ingestingQuestion
+            ? 1
+            : Math.min(1, question.length / 420)
+        }
+        palette={spectrum}
       />
       <header className="topbar">
         <button
@@ -806,7 +876,10 @@ export function QiuzhitaiApp() {
             </button>
           </div>
         ) : (
-          <form className="question-form" onSubmit={consult}>
+          <form
+            className={`question-form ${holdingQuestion ? "holding-question" : ""} ${ingestingQuestion ? "is-ingesting" : ""}`}
+            onSubmit={consult}
+          >
             <textarea
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
@@ -817,20 +890,51 @@ export function QiuzhitaiApp() {
               onKeyDown={(event) => {
                 if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                   event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
+                  beginQuestionIngestion(event.currentTarget.form);
                 }
               }}
+              disabled={working || ingestingQuestion}
               maxLength={1000}
-              placeholder="例如：领导临时将我调到一个陌生方向，承诺机会很多，但没有明确职责。我担心拒绝影响关系，接受又可能浪费一年……"
+              placeholder="写下那件尚未决定的事"
               aria-label="描述你的职场问题"
             />
-            <div className="question-meta">
-              <span>{question.length} / 1000</span>
-              <span>⌘ / Ctrl + Enter · 随机 {count} 个视角</span>
-            </div>
-            <button className="consult-button" disabled={working} type="submit">
-              <span>{working ? "封印正在铸成" : "投入黑洞"}</span>
-              <i />
+            {question.length > 850 && (
+              <span className="question-limit">{question.length} / 1000</span>
+            )}
+            <button
+              className="event-horizon-trigger"
+              disabled={!question.trim() || working || ingestingQuestion}
+              type="button"
+              aria-label="长按使问题越过边界"
+              onPointerDown={beginQuestionHold}
+              onPointerUp={cancelQuestionHold}
+              onPointerCancel={cancelQuestionHold}
+              onPointerLeave={cancelQuestionHold}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              <span className="gravity-streams" aria-hidden="true">
+                {Array.from({ length: 10 }, (_, index) => (
+                  <i
+                    key={index}
+                    style={
+                      {
+                        "--stream-angle": `${index * 36}deg`,
+                        "--stream-delay": `${index * -0.07}s`,
+                      } as CSSProperties
+                    }
+                  />
+                ))}
+              </span>
+              <span className="horizon-core" aria-hidden="true" />
+              <span className="horizon-instruction" aria-live="polite">
+                {ingestingQuestion
+                  ? "正在越过边界"
+                  : holdingQuestion
+                    ? "不要松开"
+                    : question.trim()
+                      ? "长按，使问题越过边界"
+                      : ""}
+              </span>
             </button>
           </form>
         )}
@@ -878,7 +982,13 @@ export function QiuzhitaiApp() {
         <section className="pack-stage" ref={packStageRef}>
           <div className="pack-heading">
             <div>
-              <p className="eyebrow">SEALED ORACLES</p>
+              <p className="eyebrow spectrum-signature">
+                SEALED ORACLES
+                <span>
+                  <i />
+                  {spectrum.name}
+                </span>
+              </p>
               <h2>{pack.title}</h2>
               <p className="pack-instruction">
                 {working
@@ -1190,7 +1300,16 @@ export function QiuzhitaiApp() {
               <p className="empty-history">你还没有留下任何选择。</p>
             )}
             {history.map((item, index) => (
-              <article key={item.id}>
+              <article
+                key={item.id}
+                data-spectrum={normalizeSpectrumId(item.visualSpectrum)}
+                style={
+                  {
+                    "--archive-spectrum":
+                      SPECTRA[normalizeSpectrumId(item.visualSpectrum)].primary,
+                  } as CSSProperties
+                }
+              >
                 <button type="button" onClick={() => openPack(item.id)}>
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <div>

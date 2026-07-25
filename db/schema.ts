@@ -89,6 +89,7 @@ export const advicePacks = sqliteTable("advice_packs", {
   title: text("title").notNull(),
   question: text("question").notNull(),
   problemMirror: text("problem_mirror"),
+  visualSpectrum: text("visual_spectrum").notNull().default("obsidian"),
   requestedCardCount: integer("requested_card_count").notNull(),
   status: text("status", { enum: ["generating", "ready", "empty"] }).notNull(),
   selectedCardId: text("selected_card_id"),

@@ -11,6 +11,7 @@ import {
 import { BlendFunction } from "postprocessing";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { SPECTRA, type SpectrumPalette } from "@/lib/spectra";
 
 export type OraclePhase =
   | "auth"
@@ -46,6 +47,10 @@ const fragmentShader = `
   uniform float uPhase;
   uniform float uEnergy;
   uniform vec2 uPointer;
+  uniform vec3 uVoidColor;
+  uniform vec3 uAtmosphereColor;
+  uniform vec3 uPrimaryColor;
+  uniform vec3 uSecondaryColor;
   varying vec2 vUv;
 
   float hash21(vec2 p) {
@@ -120,12 +125,12 @@ const fragmentShader = `
     current += farRing * 0.018;
     current += lens * 0.045;
 
-    vec3 ink = vec3(0.026, 0.023, 0.019);
-    vec3 warmInk = vec3(0.075, 0.061, 0.044);
-    vec3 champagne = vec3(0.78, 0.67, 0.51);
-    vec3 bone = vec3(0.91, 0.87, 0.79);
-    vec3 color = mix(ink, warmInk, atmosphere * 0.38 + lens * 0.22);
-    color += mix(champagne, bone, horizon * 0.65) * current;
+    vec3 color = mix(
+      uVoidColor,
+      uAtmosphereColor,
+      atmosphere * 0.38 + lens * 0.22
+    );
+    color += mix(uPrimaryColor, uSecondaryColor, horizon * 0.65) * current;
 
     float voidCore = 1.0 - smoothstep(0.105, 0.205, radius);
     color *= 1.0 - voidCore * 0.93;
@@ -152,7 +157,7 @@ const fragmentShader = `
 
     float grain = hash21(gl_FragCoord.xy + fract(uTime) * 31.7) - 0.5;
     color += grain * 0.012;
-    color += vec3(0.012, 0.009, 0.005) * smoothstep(0.8, 0.15, radius);
+    color += uPrimaryColor * 0.018 * smoothstep(0.8, 0.15, radius);
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -162,10 +167,12 @@ function EventHorizon({
   phase,
   energy,
   staticMode,
+  palette,
 }: {
   phase: OraclePhase;
   energy: number;
   staticMode: boolean;
+  palette: SpectrumPalette;
 }) {
   const material = useRef<THREE.ShaderMaterial>(null);
   const pointerTarget = useRef(new THREE.Vector2(0.5, 0.5));
@@ -179,8 +186,23 @@ function EventHorizon({
       uPhase: { value: 0 },
       uEnergy: { value: 0 },
       uPointer: { value: new THREE.Vector2(0.5, 0.5) },
+      uVoidColor: { value: new THREE.Color(palette.void) },
+      uAtmosphereColor: { value: new THREE.Color(palette.atmosphere) },
+      uPrimaryColor: { value: new THREE.Color(palette.primary) },
+      uSecondaryColor: { value: new THREE.Color(palette.secondary) },
     }),
+    // Uniform objects must remain stable; target colors are interpolated below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
+  );
+  const paletteTarget = useMemo(
+    () => ({
+      void: new THREE.Color(palette.void),
+      atmosphere: new THREE.Color(palette.atmosphere),
+      primary: new THREE.Color(palette.primary),
+      secondary: new THREE.Color(palette.secondary),
+    }),
+    [palette],
   );
 
   useEffect(() => {
@@ -215,6 +237,23 @@ function EventHorizon({
       staticMode ? 1 : 0.045,
     );
     material.current.uniforms.uPointer.value.copy(pointerCurrent.current);
+    const colorEase = staticMode ? 1 : 0.022;
+    material.current.uniforms.uVoidColor.value.lerp(
+      paletteTarget.void,
+      colorEase,
+    );
+    material.current.uniforms.uAtmosphereColor.value.lerp(
+      paletteTarget.atmosphere,
+      colorEase,
+    );
+    material.current.uniforms.uPrimaryColor.value.lerp(
+      paletteTarget.primary,
+      colorEase,
+    );
+    material.current.uniforms.uSecondaryColor.value.lerp(
+      paletteTarget.secondary,
+      colorEase,
+    );
   });
 
   return (
@@ -236,9 +275,11 @@ function EventHorizon({
 export function OracleAtmosphere({
   phase = "question",
   energy = 0,
+  palette = SPECTRA.obsidian,
 }: {
   phase?: OraclePhase;
   energy?: number;
+  palette?: SpectrumPalette;
 }) {
   const reducedMotion =
     typeof window !== "undefined" &&
@@ -265,6 +306,7 @@ export function OracleAtmosphere({
           phase={phase}
           energy={Math.min(1, Math.max(0, energy))}
           staticMode={reducedMotion}
+          palette={palette}
         />
         {!reducedMotion && (
           <Sparkles
@@ -272,7 +314,7 @@ export function OracleAtmosphere({
             scale={[7, 4, 2]}
             size={0.85}
             speed={phase === "burning" ? 0.2 : phase === "summoning" ? 0.14 : 0.055}
-            color={phase === "burning" ? "#e17a31" : "#c8b38e"}
+            color={phase === "burning" ? "#e17a31" : palette.spark}
             opacity={phase === "burning" ? 0.28 : phase === "reading" ? 0.08 : 0.18}
           />
         )}

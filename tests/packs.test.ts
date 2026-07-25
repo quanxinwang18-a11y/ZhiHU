@@ -12,6 +12,7 @@ import {
   redrawPack,
   serializePack,
 } from "@/lib/packs";
+import { SPECTRUM_IDS, spectrumFromSeed } from "@/lib/spectra";
 
 function resetBusinessData() {
   database.exec(`
@@ -25,6 +26,27 @@ function resetBusinessData() {
 beforeEach(resetBusinessData);
 
 describe("卡牌包事务与会话隔离", () => {
+  it("每卷神谕获得稳定且受控的宇宙光谱", () => {
+    expect(spectrumFromSeed("same-oracle")).toBe(
+      spectrumFromSeed("same-oracle"),
+    );
+    expect(
+      new Set(
+        ["alpha", "beta", "gamma", "delta", "epsilon"].map(spectrumFromSeed),
+      ).size,
+    ).toBeGreaterThan(1);
+    const pack = createPack(
+      "spectrum-user",
+      "这是一个用于验证神谕光谱可以持久保存的职场问题",
+      2,
+    );
+    const serialized = serializePack(pack);
+    expect(SPECTRUM_IDS).toContain(serialized.visualSpectrum);
+    expect(
+      serializePack(getOwnedPack(pack.id, "spectrum-user")!).visualSpectrum,
+    ).toBe(serialized.visualSpectrum);
+  });
+
   it("可抽取 1–8 张且同轮不重复", () => {
     for (let count = 1; count <= 8; count += 1) {
       const pack = createPack(`user-${count}`, "这是一个满足十个字以上的职场测试问题", count);

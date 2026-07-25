@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { database } from "@/db";
 import { advisorMap, pickAdvisors } from "@/lib/advisors";
+import {
+  normalizeSpectrumId,
+  spectrumFromSeed,
+  type SpectrumId,
+} from "@/lib/spectra";
 
 export type PackStatus = "generating" | "ready" | "empty";
 export type CardStatus = "generating" | "ready" | "failed";
@@ -12,6 +17,7 @@ export type PackRow = {
   title: string;
   question: string;
   problem_mirror: string | null;
+  visual_spectrum: SpectrumId;
   requested_card_count: number;
   status: PackStatus;
   selected_card_id: string | null;
@@ -64,6 +70,7 @@ export function serializePack(pack: PackRow, withMessages = false) {
     title: pack.title,
     question: pack.question,
     problemMirror: pack.problem_mirror || "",
+    visualSpectrum: normalizeSpectrumId(pack.visual_spectrum),
     requestedCardCount: pack.requested_card_count,
     status: pack.status,
     selectedCardId: pack.selected_card_id,
@@ -130,14 +137,24 @@ export function createPack(userId: string, question: string, count: number) {
   const selected = pickAdvisors(count);
   const now = Date.now();
   const id = randomUUID();
+  const visualSpectrum = spectrumFromSeed(id);
   const create = database.transaction(() => {
     database
       .prepare(
         `INSERT INTO advice_packs
-         (id, user_id, title, question, problem_mirror, requested_card_count, status, selected_card_id, decision, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NULL, ?, 'generating', NULL, '', ?, ?)`,
+         (id, user_id, title, question, problem_mirror, visual_spectrum, requested_card_count, status, selected_card_id, decision, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NULL, ?, ?, 'generating', NULL, '', ?, ?)`,
       )
-      .run(id, userId, question.replace(/\s+/g, " ").slice(0, 20), question, count, now, now);
+      .run(
+        id,
+        userId,
+        question.replace(/\s+/g, " ").slice(0, 20),
+        question,
+        visualSpectrum,
+        count,
+        now,
+        now,
+      );
     const insertCard = database.prepare(
       `INSERT INTO cards
        (id, card_pack_id, advisor_id, status, initial_opinion, settled_order, started_at, completed_at)
