@@ -91,6 +91,9 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.locator('[data-testid="oracle-card"][data-state="ready"]')).toHaveCount(4, {
     timeout: 20_000,
   });
+  await expect(page.getByTestId("oracle-card").first()).toBeInViewport({
+    ratio: 0.5,
+  });
   await expect(page.getByText("所问之事的回声", { exact: true })).toBeVisible();
 
   const cards = page.getByTestId("oracle-card");

@@ -82,6 +82,9 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .question-stage { position: relative; z-index: 3; min-height: calc(100vh - 92px); padding: clamp(82px, 12vh, 145px) 20px 120px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .question-stage h1 { margin: 6px 0 18px; max-width: 1180px; font: 400 clamp(38px, 4vw, 64px)/1.28 var(--serif); letter-spacing: .12em; text-indent: .12em; }
 .stage-lead { margin: 0 0 40px; color: #978f82; font: 400 15px/1.8 var(--serif); letter-spacing: .08em; }
+.oracle-shell.has-pack .question-stage { min-height: 0; padding: clamp(38px, 5vh, 66px) 20px 34px; }
+.oracle-shell.has-pack .question-stage h1 { margin: 4px 0 10px; font-size: clamp(34px, 3vw, 48px); }
+.oracle-shell.has-pack .stage-lead { margin-bottom: 18px; font-size: 13px; }
 .question-form { width: min(880px, 76vw); position: relative; }
 .question-form::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 38%; width: 112%; height: 128%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(200,179,142,.055), rgba(10,9,8,.12) 38%, transparent 70%); filter: blur(18px); opacity: .7; transition: opacity .8s var(--ease-oracle), transform .8s var(--ease-oracle); }
 .question-form:focus-within::before { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
@@ -93,6 +96,10 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .question-frozen > p { margin: 0; padding: 20px 28px; border: 0; background: radial-gradient(ellipse, rgba(12,10,8,.62), transparent 72%); box-shadow: none; color: var(--bone); text-align: center; font: 400 16px/1.9 var(--serif); }
 .question-frozen blockquote { margin: 12px auto 0; max-width: 700px; padding: 12px 20px; border: 0; color: #8e8678; text-align: center; font: 12px/1.75 var(--serif); background: transparent; }
 .question-frozen blockquote span { display: block; margin-bottom: 4px; color: var(--gold); font: 8px var(--sans); letter-spacing: .2em; }
+.oracle-shell.has-pack .question-frozen > p { padding: 8px 24px; font-size: 14px; }
+.oracle-shell.has-pack .question-frozen blockquote { margin-top: 3px; padding: 7px 20px; font-size: 11px; }
+.oracle-shell.has-pack .question-frozen .consult-button { width: auto; height: auto; margin-top: 8px; padding: 8px 18px; border-radius: 0; background: transparent; color: #766c5d; font-size: 10px; }
+.oracle-shell.has-pack .question-frozen .consult-button::before, .oracle-shell.has-pack .question-frozen .consult-button::after, .oracle-shell.has-pack .question-frozen .consult-button i { display: none; }
 .consult-button { width: 126px; height: 126px; margin-top: 15px; border: 0; border-radius: 50%; background: radial-gradient(circle, rgba(200,179,142,.1), rgba(10,9,8,.2) 42%, transparent 70%); cursor: pointer; color: var(--bright); letter-spacing: .14em; position: relative; overflow: visible; box-shadow: none; }
 .consult-button::before, .consult-button::after { content: ""; position: absolute; inset: 15px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(200,179,142,.2); transition: transform .9s var(--ease-oracle), box-shadow .9s var(--ease-oracle); }
 .consult-button::after { inset: 31px; box-shadow: inset 0 0 0 1px rgba(200,179,142,.38); }
@@ -106,7 +113,7 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .input-count-control { position: absolute; right: 4.5vw; bottom: 155px; }
 .input-count-control .control-popover { top: 50px; }
 
-.pack-stage { position: relative; z-index: 3; min-height: 720px; padding: 78px 4.5vw 118px; background: linear-gradient(180deg, rgba(10,9,8,.16), rgba(10,9,8,.78) 24%, #100e0b 68%, var(--ink) 100%); box-shadow: 0 -90px 150px rgba(10,9,8,.34); }
+.pack-stage { position: relative; z-index: 3; min-height: 720px; padding: 34px 4.5vw 118px; scroll-margin-top: 14px; background: linear-gradient(180deg, rgba(10,9,8,.18), rgba(10,9,8,.78) 24%, #100e0b 68%, var(--ink) 100%); box-shadow: 0 -90px 150px rgba(10,9,8,.34); }
 .pack-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 34px; }
 .pack-heading h2 { max-width: 750px; margin: 0; font: 400 29px/1.55 var(--serif); letter-spacing: .045em; }
 .pack-instruction { margin: 11px 0 0; color: #716b61; font: 11px/1.7 var(--serif); letter-spacing: .08em; }

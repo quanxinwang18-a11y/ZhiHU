@@ -210,6 +210,7 @@ export function QiuzhitaiApp() {
   const [notice, setNotice] = useState("");
   const aborters = useRef(new Map<string, AbortController>());
   const decisionTimer = useRef<number | undefined>(undefined);
+  const packStageRef = useRef<HTMLElement>(null);
 
   const selected = pack?.advisors.find(
     (advisor) => advisor.id === selectedAdvisor,
@@ -441,6 +442,14 @@ export function QiuzhitaiApp() {
         ),
       );
       setSelectedAdvisor(null);
+      window.setTimeout(() => {
+        packStageRef.current?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+          block: "start",
+        });
+      }, 120);
       void fetch(`/api/packs/${nextPack.id}/mirror`, {
         method: "POST",
       })
@@ -829,7 +838,7 @@ export function QiuzhitaiApp() {
       </section>
 
       {pack && (
-        <section className="pack-stage">
+        <section className="pack-stage" ref={packStageRef}>
           <div className="pack-heading">
             <div>
               <p className="eyebrow">SEALED ORACLES</p>
