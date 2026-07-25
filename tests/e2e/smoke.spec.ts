@@ -7,6 +7,25 @@ const password = "Strong!2026";
 async function register(page: Page, username: string) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "求知台" })).toBeVisible();
+  const atmosphere = page.locator(".oracle-atmosphere canvas");
+  await expect(atmosphere).toBeVisible();
+  expect(
+    await atmosphere.evaluate((canvas) =>
+      Boolean(
+        (canvas as HTMLCanvasElement).getContext("webgl2") ||
+          (canvas as HTMLCanvasElement).getContext("webgl"),
+      ),
+    ),
+  ).toBe(true);
+  expect(
+    await page.locator(".auth-panel").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        border: style.borderTopWidth,
+        shadow: style.boxShadow,
+      };
+    }),
+  ).toEqual({ border: "0px", shadow: "none" });
   await page.getByRole("button", { name: "注册" }).click();
   await page.getByLabel("用户名", { exact: true }).fill(username);
   await page.getByLabel("密码", { exact: true }).fill(password);
@@ -19,6 +38,22 @@ async function register(page: Page, username: string) {
   await expect(
     page.getByRole("heading", { name: "把你的困惑，交给不同的人生" }),
   ).toBeVisible();
+  expect(
+    await page
+      .getByRole("textbox", { name: "描述你的职场问题" })
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          border: style.borderTopWidth,
+          shadow: style.boxShadow,
+          background: style.backgroundColor,
+        };
+      }),
+  ).toEqual({
+    border: "0px",
+    shadow: "none",
+    background: "rgba(0, 0, 0, 0)",
+  });
 }
 
 async function createQuestion(page: Page, question: string) {
@@ -65,6 +100,7 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
   await cards.nth(0).click();
   await expect(page.getByText(/THE ORACLE · 01/)).toBeVisible();
+  await expect(page.locator(".reading-room")).toHaveCSS("border-top-width", "0px");
   await page.keyboard.press("Escape");
   await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
   await cards.nth(0).click();
@@ -129,6 +165,7 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
 });
 
 test("支持八卡并行、受控单卡失败移除和一张重抽", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await register(page, "边界验收用户");
   await page.getByRole("button", { name: "设置抽取数量" }).click();
   await page.getByRole("button", { name: "抽取 8 张" }).click();

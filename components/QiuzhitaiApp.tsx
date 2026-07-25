@@ -17,9 +17,11 @@ import {
 import { AuthGate } from "@/components/AuthGate";
 import { startSound, stopSound } from "@/lib/sound";
 
-const BlackHoleScene = dynamic(
+const OracleAtmosphere = dynamic(
   () =>
-    import("@/components/BlackHoleScene").then((module) => module.BlackHoleScene),
+    import("@/components/OracleAtmosphere").then(
+      (module) => module.OracleAtmosphere,
+    ),
   { ssr: false },
 );
 
@@ -692,7 +694,18 @@ export function QiuzhitaiApp() {
 
   return (
     <main className={`oracle-shell ${pack ? "has-pack" : ""}`}>
-      <BlackHoleScene active={working} />
+      <OracleAtmosphere
+        phase={
+          selected
+            ? "reading"
+            : pack
+              ? working
+                ? "summoning"
+                : "sealed"
+              : "question"
+        }
+        energy={working ? 1 : Math.min(1, question.length / 420)}
+      />
       <header className="topbar">
         <button
           className="wordmark"

@@ -1,8 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { FormEvent, useState } from "react";
 
 type Props = { onAuthenticated: () => void };
+
+const OracleAtmosphere = dynamic(
+  () =>
+    import("@/components/OracleAtmosphere").then(
+      (module) => module.OracleAtmosphere,
+    ),
+  { ssr: false },
+);
 
 export function AuthGate({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -51,12 +60,11 @@ export function AuthGate({ onAuthenticated }: Props) {
   }
 
   return (
-    <main className="auth-shell">
-      <div className="auth-orbit" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
+    <main className={`auth-shell auth-${mode}`}>
+      <OracleAtmosphere
+        phase="auth"
+        energy={Math.min(1, (username.length + password.length) / 24)}
+      />
       <section className="auth-panel">
         <div className="brand-seal">知</div>
         <p className="eyebrow">THE ORACLE OF DISSENT</p>
