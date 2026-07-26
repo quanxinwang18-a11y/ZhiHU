@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPackMarkdown } from "@/app/api/packs/[id]/export/route";
+import { buildPackMarkdown } from "@/lib/export-pack";
 import { advisors } from "@/lib/advisors";
 import { buildAdvisorSystemPrompt } from "@/lib/real-ai";
 import type { CardRow, MessageRow, PackRow } from "@/lib/packs";
@@ -20,6 +20,7 @@ describe("顾问提示词与 Markdown 导出", () => {
       title: "标题 *不可加粗*",
       question: "是否接受 [调动]？",
       problem_mirror: "权衡机会与代价",
+      visual_spectrum: "obsidian",
       requested_card_count: 2,
       status: "ready",
       selected_card_id: null,

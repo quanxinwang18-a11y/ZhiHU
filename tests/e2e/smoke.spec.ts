@@ -76,6 +76,10 @@ async function createQuestion(page: Page, question: string) {
   await page.mouse.down();
   await page.waitForTimeout(980);
   await page.mouse.up();
+  await expect(
+    page.getByRole("status", { name: /黑洞正在折叠不同的人生/ }),
+  ).toBeVisible();
+  await expect(page.getByTestId("oracle-card")).toHaveCount(0);
   await expect(page.locator(".spectrum-signature")).toContainText(
     "SEALED ORACLES",
   );
@@ -87,6 +91,7 @@ async function createQuestion(page: Page, question: string) {
 }
 
 test("注册、登录、四卡、停止追问、决定、历史与账号闭环", async ({ page }) => {
+  test.setTimeout(90_000);
   await register(page, primaryUsername);
   const sessionCookie = (await page.context().cookies()).find((cookie) =>
     cookie.name.includes("session_token"),
@@ -121,12 +126,31 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.getByText("所问之事的回声", { exact: true })).toBeVisible();
 
   const cards = page.getByTestId("oracle-card");
+  const fourCardSize = await cards.first().evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return { width: bounds.width, height: bounds.height, top: bounds.top };
+  });
   await expect(page.locator('[data-testid="oracle-card"][data-revealed="true"]')).toHaveCount(0);
   await cards.nth(0).click();
   await expect(cards.nth(0)).toHaveAttribute("data-revealed", "true");
+  await expect(cards.nth(0).locator(".card-front")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
+  await expect(cards.nth(0).locator(".card-back")).toHaveAttribute(
+    "aria-hidden",
+    "false",
+  );
+  await expect(cards.nth(0).locator(".card-flipper")).not.toHaveCSS(
+    "transform",
+    "none",
+  );
+  const featuredCard = page.getByTestId("featured-oracle-card");
+  await expect(featuredCard).toBeVisible();
   await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
-  await cards.nth(0).click();
+  await featuredCard.click();
   await expect(page.getByText(/THE ORACLE · 01/)).toBeVisible();
+  await expect(page.locator(".oracle-identity-echo")).toHaveCount(0);
   await expect(page.locator(".reading-room")).toHaveCSS("border-top-width", "0px");
   await page.keyboard.press("Escape");
   await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
@@ -162,14 +186,30 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.getByText(/THE ORACLE · 01/)).toBeVisible();
   await expect(decision).toHaveValue("先书面确认三十天目标，再依据真实反馈决定。");
 
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "焚毁此卷" }).click();
+  await page.getByRole("button", { name: "碎裂此卷" }).click();
   await expect(
-    page.getByRole("status", { name: "神谕正在化为飞灰" }),
+    page.getByRole("status", { name: "神谕正在碎裂为粒子流" }),
   ).toBeVisible();
-  await expect(page.locator(".reading-room")).toHaveClass(
-    /burning-manuscript/,
+  await expect(page.locator(".particle-stream span")).toHaveCount(96);
+  await expect(page.locator(".particle-stream span").first()).toHaveCSS(
+    "animation-name",
+    "particleStream",
   );
+  await expect(page.locator(".reading-room")).toHaveClass(
+    /shattering-manuscript/,
+  );
+  await expect(page.getByTestId("oracle-card")).toHaveCount(3, {
+    timeout: 5_000,
+  });
+  const threeCardSize = await cards.first().evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return { width: bounds.width, height: bounds.height, top: bounds.top };
+  });
+  expect(Math.abs(threeCardSize.width - fourCardSize.width)).toBeLessThan(1);
+  expect(Math.abs(threeCardSize.height - fourCardSize.height)).toBeLessThan(1);
+  expect(Math.abs(threeCardSize.top - fourCardSize.top)).toBeLessThan(1);
+  await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
+  await page.getByRole("button", { name: "提出一个新问题" }).click();
   await expect(
     page.getByRole("heading", { name: "把你的困惑，交给不同的人生" }),
   ).toBeVisible({ timeout: 5_000 });

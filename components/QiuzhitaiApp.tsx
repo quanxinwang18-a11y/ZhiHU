@@ -23,6 +23,7 @@ import {
   SPECTRA,
   type SpectrumId,
 } from "@/lib/spectra";
+import { buildOracleReading } from "@/lib/oracle-reading";
 
 const OracleAtmosphere = dynamic(
   () =>
@@ -70,6 +71,53 @@ type Pack = {
 };
 type CardState = "waiting" | "summoning" | "ready" | "failed";
 
+function OracleRevelation({
+  content,
+  label,
+  title,
+  status,
+}: {
+  content: string;
+  label: string;
+  title: string;
+  status?: Message["status"];
+}) {
+  const reading = useMemo(() => buildOracleReading(content), [content]);
+
+  return (
+    <article className="oracle-inscription oracle-revelation">
+      <header>
+        <span>{label}</span>
+        <strong>{title}</strong>
+      </header>
+      {reading.invocation && (
+        <p className="oracle-invocation">{reading.invocation}</p>
+      )}
+      <blockquote
+        className={`oracle-verdict ${reading.verdict.length > 42 ? "is-long" : ""}`}
+        aria-label="核心判词"
+      >
+        <small>THE VERDICT · 判词</small>
+        <p>{reading.verdict}</p>
+      </blockquote>
+      {reading.exegesis.length > 0 && (
+        <div className="oracle-exegesis">
+          <small>EXEGESIS · 释义</small>
+          {reading.exegesis.map((paragraph, index) => (
+            <p key={`${index}-${paragraph.slice(0, 12)}`}>{paragraph}</p>
+          ))}
+        </div>
+      )}
+      {status === "stopped" && (
+        <small className="stopped-label">回答已停止</small>
+      )}
+      {status === "failed" && (
+        <small className="stopped-label">回答中断</small>
+      )}
+    </article>
+  );
+}
+
 function Icon({
   children,
   label,
@@ -99,6 +147,7 @@ function AdvisorCard({
   state,
   revealed,
   selected,
+  entering,
   onClick,
   index,
 }: {
@@ -106,6 +155,7 @@ function AdvisorCard({
   state: CardState;
   revealed: boolean;
   selected: boolean;
+  entering: boolean;
   onClick: () => void;
   index: number;
 }) {
@@ -120,7 +170,7 @@ function AdvisorCard({
 
   return (
     <article
-      className={`oracle-card ${state} ${revealed ? "revealed" : "sealed"} ${selected ? "selected" : ""}`}
+      className={`oracle-card ${state} ${revealed ? "revealed" : "sealed"} ${selected ? "selected" : ""} ${entering ? "entering" : ""}`}
       data-testid="oracle-card"
       data-advisor-id={advisor.id}
       data-card-id={advisor.cardId}
@@ -144,51 +194,55 @@ function AdvisorCard({
       aria-label={actionLabel}
       aria-disabled={!canReveal}
     >
-      <div className="card-index">0{index + 1}</div>
-      <div className="card-art">
-        <Image
-          src={advisor.image}
-          alt=""
-          fill
-          sizes="(max-width: 1300px) 22vw, 280px"
-          priority={index < 4}
-        />
-      </div>
-      <div className="card-grain" />
-      <div className="card-seal" aria-hidden="true">
-        <div className="seal-geometry">
-          <span />
-          <i />
-          <i />
+      <div className="card-flipper">
+        <div className="card-face card-front" aria-hidden={revealed}>
+          <div className="card-index">0{index + 1}</div>
+          <div className="card-grain" />
+          <div className="card-seal" aria-hidden="true">
+            <div className="seal-geometry">
+              <span />
+              <i />
+              <i />
+            </div>
+            <strong>
+              {state === "failed" ? "封印未成" : "神谕已经封存"}
+            </strong>
+            <small>
+              {state === "ready"
+                ? "不要猜测来者 · 凭直觉选择"
+                : "不同立场仍在黑洞背面成形"}
+            </small>
+          </div>
+          <footer>
+            <div>
+              <strong>无名之牌</strong>
+              <span>THE SEALED VOICE</span>
+            </div>
+            <em>轻触显影</em>
+          </footer>
+          <div className="card-disclaimer">SEALED</div>
         </div>
-        <strong>
-          {state === "waiting"
-            ? "等待引力"
-            : state === "summoning"
-              ? "正在铸成封印"
-              : state === "failed"
-                ? "封印未成"
-                : revealed
-                  ? "神谕已经显影"
-                  : "神谕已经封存"}
-        </strong>
-        <small>
-          {state === "ready"
-            ? revealed
-              ? "再次选择 · 进入解读"
-              : "不要猜测来者 · 凭直觉选择"
-            : "不同立场仍在黑洞背面成形"}
-        </small>
-      </div>
-      <footer>
-        <div>
-          <strong>{revealed ? advisor.name : "无名之牌"}</strong>
-          <span>{revealed ? advisor.epithet : "THE SEALED VOICE"}</span>
+        <div className="card-face card-back" aria-hidden={!revealed}>
+          <div className="card-index">0{index + 1}</div>
+          <div className="card-art">
+            <Image
+              src={advisor.image}
+              alt=""
+              fill
+              sizes="(max-width: 1300px) 22vw, 280px"
+              priority={index < 4}
+            />
+          </div>
+          <div className="card-grain" />
+          <footer>
+            <div>
+              <strong>{advisor.name}</strong>
+              <span>{advisor.epithet}</span>
+            </div>
+            <em>进入神谕</em>
+          </footer>
+          <div className="card-disclaimer">AI 模拟启示</div>
         </div>
-        <em>{revealed ? "进入神谕" : "轻触显影"}</em>
-      </footer>
-      <div className="card-disclaimer">
-        {revealed ? "AI 模拟启示" : "SEALED"}
       </div>
     </article>
   );
@@ -207,6 +261,10 @@ export function QiuzhitaiApp() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [selectedAdvisor, setSelectedAdvisor] = useState<string | null>(null);
+  const [featuredAdvisorId, setFeaturedAdvisorId] = useState<string | null>(
+    null,
+  );
+  const [enteringAdvisor, setEnteringAdvisor] = useState<string | null>(null);
   const [revealedAdvisorIds, setRevealedAdvisorIds] = useState<string[]>([]);
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [states, setStates] = useState<Record<string, CardState>>({});
@@ -223,10 +281,15 @@ export function QiuzhitaiApp() {
   const decisionTimer = useRef<number | undefined>(undefined);
   const holdTimer = useRef<number | undefined>(undefined);
   const ingestionTimer = useRef<number | undefined>(undefined);
+  const oracleEntryTimer = useRef<number | undefined>(undefined);
+  const wasWorking = useRef(false);
   const packStageRef = useRef<HTMLElement>(null);
 
   const selected = pack?.advisors.find(
     (advisor) => advisor.id === selectedAdvisor,
+  );
+  const featuredAdvisor = pack?.advisors.find(
+    (advisor) => advisor.id === featuredAdvisorId,
   );
   const spectrum = SPECTRA[normalizeSpectrumId(pack?.visualSpectrum)];
   const spectrumStyle = {
@@ -295,13 +358,21 @@ export function QiuzhitaiApp() {
       if (decisionTimer.current) window.clearTimeout(decisionTimer.current);
       if (holdTimer.current) window.clearTimeout(holdTimer.current);
       if (ingestionTimer.current) window.clearTimeout(ingestionTimer.current);
+      if (oracleEntryTimer.current) {
+        window.clearTimeout(oracleEntryTimer.current);
+      }
       controllers.forEach((controller) => controller.abort());
     };
   }, [checkSession]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedAdvisor(null);
+      if (event.key !== "Escape") return;
+      if (featuredAdvisorId) {
+        setFeaturedAdvisorId(null);
+      } else {
+        setSelectedAdvisor(null);
+      }
     }
     function onPageHide() {
       if (working && pack?.id) {
@@ -314,7 +385,23 @@ export function QiuzhitaiApp() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pagehide", onPageHide);
     };
-  }, [pack?.id, working]);
+  }, [featuredAdvisorId, pack?.id, working]);
+
+  useEffect(() => {
+    const finishedSummoning = wasWorking.current && !working && Boolean(pack);
+    wasWorking.current = working;
+    if (!finishedSummoning) return;
+
+    const timer = window.setTimeout(() => {
+      packStageRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [pack, working]);
 
   function mergeMessages(next: Message[]) {
     setPack((current) => (current ? { ...current, messages: next } : current));
@@ -450,6 +537,7 @@ export function QiuzhitaiApp() {
     setWorking(true);
     setPack(null);
     setSelectedAdvisor(null);
+    setFeaturedAdvisorId(null);
     setRevealedAdvisorIds([]);
     setTexts({});
     try {
@@ -469,14 +557,6 @@ export function QiuzhitaiApp() {
         ),
       );
       setSelectedAdvisor(null);
-      window.setTimeout(() => {
-        packStageRef.current?.scrollIntoView({
-          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-            ? "auto"
-            : "smooth",
-          block: "start",
-        });
-      }, 120);
       void fetch(`/api/packs/${nextPack.id}/mirror`, {
         method: "POST",
       })
@@ -545,6 +625,7 @@ export function QiuzhitaiApp() {
     const response = await fetch(`/api/packs/${id}`);
     if (!response.ok) return;
     const data = (await response.json()) as Pack;
+    setFeaturedAdvisorId(null);
     const cardTexts = Object.fromEntries(
       data.advisors.map((advisor) => [advisor.id, advisor.initialOpinion]),
     );
@@ -587,6 +668,7 @@ export function QiuzhitaiApp() {
         Object.fromEntries(next.advisors.map((advisor) => [advisor.id, "waiting"])),
       );
       setSelectedAdvisor(null);
+      setFeaturedAdvisorId(null);
       setRevealedAdvisorIds([]);
       const results = await Promise.all(
         next.advisors.map((advisor) => streamAdvisor(next, advisor)),
@@ -642,14 +724,27 @@ export function QiuzhitaiApp() {
   }
 
   async function selectAdvisor(advisor: Advisor) {
-    if (!pack || advisor.status !== "ready") return;
+    if (!pack || advisor.status !== "ready" || enteringAdvisor) return;
     if (!revealedAdvisorIds.includes(advisor.id)) {
       setRevealedAdvisorIds((current) => [...current, advisor.id]);
+      setFeaturedAdvisorId(advisor.id);
       setNotice("一枚无名之牌已经显影。再次选择，进入它的神谕。");
       return;
     }
-    setSelectedAdvisor(advisor.id);
-    await fetch(`/api/packs/${pack.id}`, {
+    setEnteringAdvisor(advisor.id);
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.clearTimeout(oracleEntryTimer.current);
+    oracleEntryTimer.current = window.setTimeout(
+      () => {
+        setSelectedAdvisor(advisor.id);
+        setFeaturedAdvisorId(null);
+        setEnteringAdvisor(null);
+      },
+      reducedMotion ? 60 : 760,
+    );
+    void fetch(`/api/packs/${pack.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ selectedCardId: advisor.cardId }),
@@ -664,6 +759,8 @@ export function QiuzhitaiApp() {
   function beginNewQuestion() {
     aborters.current.forEach((controller) => controller.abort());
     setPack(null);
+    setEnteringAdvisor(null);
+    setFeaturedAdvisorId(null);
     setQuestion("");
     setSelectedAdvisor(null);
     setRevealedAdvisorIds([]);
@@ -679,42 +776,81 @@ export function QiuzhitaiApp() {
     await fetch(`/api/packs/${id}`, { method: "DELETE" });
     if (pack?.id === id) {
       setPack(null);
+      setFeaturedAdvisorId(null);
       setQuestion("");
     }
     await loadHistory(false);
   }
 
-  async function burnCurrentPack(id: string) {
-    if (burningPackId) return;
-    if (!window.confirm("焚毁后无法恢复。让这卷神谕化为灰烬？")) return;
+  async function dissolveCurrentReading(id: string) {
+    if (burningPackId || !selected) return;
 
+    const destroyedAdvisorId = selected.id;
+    const destroyedCardId = selected.cardId;
     setNotice("");
     setBurningPackId(id);
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    const deletion = fetch(`/api/cards/${destroyedCardId}`, {
+      method: "DELETE",
+    });
     await new Promise((resolve) =>
-      window.setTimeout(resolve, reducedMotion ? 180 : 2700),
+      window.setTimeout(resolve, reducedMotion ? 950 : 3000),
     );
 
-    const response = await fetch(`/api/packs/${id}`, { method: "DELETE" });
+    const response = await deletion;
     if (!response.ok) {
       setBurningPackId(null);
-      setNotice("火焰熄灭了，这卷神谕仍被保留。");
+      setNotice("粒子重新凝聚，这枚卡牌未被销毁。");
       return;
     }
 
-    setPack(null);
-    setQuestion("");
+    setPack((current) => {
+      if (current?.id !== id) return current;
+      const advisors = current.advisors.filter(
+        (advisor) => advisor.id !== destroyedAdvisorId,
+      );
+      return {
+        ...current,
+        advisors,
+        messages: current.messages.filter(
+          (message) => message.advisorId !== destroyedAdvisorId,
+        ),
+        selectedCardId: null,
+        status: advisors.length > 0 ? "ready" : "empty",
+      };
+    });
+    setRevealedAdvisorIds((current) =>
+      current.filter((advisorId) => advisorId !== destroyedAdvisorId),
+    );
+    setTexts((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([advisorId]) => advisorId !== destroyedAdvisorId,
+        ),
+      ),
+    );
+    setStates((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([advisorId]) => advisorId !== destroyedAdvisorId,
+        ),
+      ),
+    );
     setSelectedAdvisor(null);
-    setRevealedAdvisorIds([]);
-    setTexts({});
-    setStates({});
-    setDecision("");
+    setFeaturedAdvisorId(null);
     setFollowup("");
     setBurningPackId(null);
     await loadHistory(false);
-    window.scrollTo({ top: 0, behavior: "auto" });
+    window.setTimeout(
+      () =>
+        packStageRef.current?.scrollIntoView({
+          behavior: reducedMotion ? "auto" : "smooth",
+          block: "start",
+        }),
+      40,
+    );
   }
 
   async function renamePack(item: Pack) {
@@ -797,14 +933,14 @@ export function QiuzhitaiApp() {
 
   return (
     <main
-      className={`oracle-shell ${pack ? "has-pack" : ""}`}
+      className={`oracle-shell ${pack && !working ? "has-pack" : ""} ${working ? "is-converging" : ""}`}
       data-spectrum={spectrum.id}
       style={spectrumStyle}
     >
       <OracleAtmosphere
         phase={
           burningPackId
-            ? "burning"
+            ? "dissolving"
             : ingestingQuestion
               ? "summoning"
             : selected
@@ -857,11 +993,29 @@ export function QiuzhitaiApp() {
         <p className="stage-lead">
           {pack
             ? working
-              ? "不同立场正在穿过黑洞，被封存于四张无名之牌。"
+              ? "不同立场正在事件视界后收束。"
               : "先凭直觉选择一张。牌面只会显露来者，不会替你决定。"
             : "描述真实处境。不同立场将被封入四张无名之牌。"}
         </p>
-        {pack ? (
+        {pack && working ? (
+          <div
+            className="convergence-ritual"
+            role="status"
+            aria-label="黑洞正在折叠不同的人生"
+            aria-live="polite"
+          >
+            <span>CONVERGENCE</span>
+            <p>黑洞正在折叠不同的人生</p>
+            <button
+              type="button"
+              onClick={() =>
+                aborters.current.forEach((controller) => controller.abort())
+              }
+            >
+              停止召唤
+            </button>
+          </div>
+        ) : pack ? (
           <div className="question-frozen">
             <p>{pack.question}</p>
             {pack.problemMirror && (
@@ -978,7 +1132,7 @@ export function QiuzhitaiApp() {
         {error && <p className="stage-error">{error}</p>}
       </section>
 
-      {pack && (
+      {pack && !working && (
         <section className="pack-stage" ref={packStageRef}>
           <div className="pack-heading">
             <div>
@@ -991,23 +1145,10 @@ export function QiuzhitaiApp() {
               </p>
               <h2>{pack.title}</h2>
               <p className="pack-instruction">
-                {working
-                  ? "请等待封印完成。"
-                  : "第一次选择显露来者，第二次选择进入神谕。"}
+                第一次选择翻开卡面，第二次选择进入神谕。
               </p>
             </div>
             <div className="pack-tools">
-              {working && (
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={() =>
-                    aborters.current.forEach((controller) => controller.abort())
-                  }
-                >
-                  停止封印
-                </button>
-              )}
               <button
                 type="button"
                 className="hidden-control"
@@ -1046,10 +1187,7 @@ export function QiuzhitaiApp() {
               )}
             </div>
           </div>
-          <div
-            className="card-rail"
-            style={{ "--card-count": Math.min(pack.advisors.length, 4) } as React.CSSProperties}
-          >
+          <div className="card-rail">
             {pack.advisors.map((advisor, index) => (
               <AdvisorCard
                 key={advisor.id}
@@ -1057,6 +1195,7 @@ export function QiuzhitaiApp() {
                 state={states[advisor.id] || "waiting"}
                 revealed={revealedAdvisorIds.includes(advisor.id)}
                 selected={selectedAdvisor === advisor.id}
+                entering={enteringAdvisor === advisor.id}
                 onClick={() => void selectAdvisor(advisor)}
                 index={index}
               />
@@ -1065,15 +1204,61 @@ export function QiuzhitaiApp() {
         </section>
       )}
 
+      {featuredAdvisor && (
+        <div
+          className={`card-reveal-layer ${enteringAdvisor === featuredAdvisor.id ? "entering" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${featuredAdvisor.name} 已显形`}
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !enteringAdvisor
+            ) {
+              setFeaturedAdvisorId(null);
+            }
+          }}
+        >
+          <button
+            type="button"
+            className="featured-oracle-card"
+            data-testid="featured-oracle-card"
+            data-advisor-id={featuredAdvisor.id}
+            aria-label={`进入 ${featuredAdvisor.name} 的神谕`}
+            onClick={() => void selectAdvisor(featuredAdvisor)}
+          >
+            <Image
+              src={featuredAdvisor.image}
+              alt=""
+              fill
+              sizes="390px"
+              priority
+            />
+            <span className="featured-card-vignette" aria-hidden="true" />
+            <span className="featured-card-identity">
+              <strong>{featuredAdvisor.name}</strong>
+              <small>{featuredAdvisor.epithet}</small>
+            </span>
+          </button>
+          <p>再次选择，让这道目光化为神谕</p>
+        </div>
+      )}
+
       {pack && selected && selected.status === "ready" && (
         <div
-          className={`reading-layer ${burningPackId === pack.id ? "immolating" : ""}`}
+          className={`reading-layer ${burningPackId === pack.id ? "dissolving" : ""}`}
           onMouseDown={() => {
             if (!burningPackId) setSelectedAdvisor(null);
           }}
         >
         <section
-          className={`reading-room ${burningPackId === pack.id ? "burning-manuscript" : ""}`}
+          className={`reading-room ${burningPackId === pack.id ? "shattering-manuscript" : ""}`}
+          data-advisor-id={selected.id}
+          style={
+            {
+              "--oracle-identity-image": `url("${selected.image}")`,
+            } as CSSProperties
+          }
           onMouseDown={(event) => event.stopPropagation()}
         >
           <button
@@ -1086,7 +1271,9 @@ export function QiuzhitaiApp() {
             封存
           </button>
           <header>
-            <div className="advisor-monogram">{selected.name.slice(0, 1)}</div>
+            <div className="advisor-monogram" aria-hidden="true">
+              {selected.name.slice(0, 1)}
+            </div>
             <div>
               <p className="eyebrow">THE ORACLE · {String(pack.advisors.findIndex((advisor) => advisor.id === selected.id) + 1).padStart(2, "0")}</p>
               <h2>来自 {selected.name} 的神谕</h2>
@@ -1098,46 +1285,39 @@ export function QiuzhitaiApp() {
               <small>THE QUESTION · 所问之事</small>
               {pack.question}
             </p>
-            <article className="oracle-inscription initial-oracle">
-              <header>
-                <span>PRIMARY READING</span>
-                <strong>主神谕</strong>
-              </header>
-              <div className="markdown-body">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeSanitize]}
-                >
-                  {selected.initialOpinion}
-                </ReactMarkdown>
-              </div>
-            </article>
+            <OracleRevelation
+              content={selected.initialOpinion}
+              label="PRIMARY READING"
+              title="主神谕"
+            />
             {selectedMessages.map((message) => (
-              <article
-                className={`oracle-inscription ${message.role === "user" ? "oracle-question" : "oracle-echo"}`}
-                key={message.id}
-              >
-                <header>
-                  <span>
-                    {message.role === "user" ? "ANOTHER QUESTION" : "AFTERWORD"}
-                  </span>
-                  <strong>{message.role === "user" ? "再问" : "续示"}</strong>
-                </header>
-                <div className="markdown-body">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeSanitize]}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
-                  {message.status === "stopped" && (
-                    <small className="stopped-label">回答已停止</small>
-                  )}
-                  {message.status === "failed" && (
-                    <small className="stopped-label">回答中断</small>
-                  )}
-                </div>
-              </article>
+              message.role === "assistant" ? (
+                <OracleRevelation
+                  key={message.id}
+                  content={message.content}
+                  label="AFTERWORD"
+                  title="续示"
+                  status={message.status}
+                />
+              ) : (
+                <article
+                  className="oracle-inscription oracle-question"
+                  key={message.id}
+                >
+                  <header>
+                    <span>ANOTHER QUESTION</span>
+                    <strong>再问</strong>
+                  </header>
+                  <div className="markdown-body">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeSanitize]}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                </article>
+              )
             ))}
             {states[selected.id] === "summoning" && (
               <article className="oracle-inscription oracle-echo streaming">
@@ -1211,53 +1391,60 @@ export function QiuzhitaiApp() {
             <button
               type="button"
               disabled={burningPackId === pack.id}
-              onClick={() => void burnCurrentPack(pack.id)}
+              onClick={() => void dissolveCurrentReading(pack.id)}
             >
-              {burningPackId === pack.id ? "焚烧中" : "焚毁此卷"}
+              {burningPackId === pack.id ? "解体中" : "碎裂此卷"}
             </button>
           </div>
         </section>
         {burningPackId === pack.id && (
           <div
-            className="immolation-layer"
+            className="dissolution-layer"
             role="status"
-            aria-label="神谕正在化为飞灰"
+            aria-label="神谕正在碎裂为粒子流"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <div className="burn-scorch" aria-hidden="true" />
-            <div className="flame-ribbon" aria-hidden="true">
-              {Array.from({ length: 20 }, (_, index) => (
+            <div className="fracture-field" aria-hidden="true">
+              {Array.from({ length: 18 }, (_, index) => (
                 <i
                   key={index}
                   style={
                     {
-                      "--flame-x": `${4 + index * 4.8}%`,
-                      "--flame-delay": `${(index % 7) * -0.09}s`,
-                      "--flame-height": `${100 + (index % 5) * 34}px`,
+                      "--fragment-x": `${5 + ((index * 29) % 82)}%`,
+                      "--fragment-y": `${7 + ((index * 41) % 78)}%`,
+                      "--fragment-w": `${55 + (index % 6) * 24}px`,
+                      "--fragment-h": `${34 + (index % 5) * 19}px`,
+                      "--fragment-dx": `${240 + (index % 7) * 72}px`,
+                      "--fragment-dy": `${-110 + ((index * 47) % 220)}px`,
+                      "--fragment-turn": `${-34 + ((index * 31) % 72)}deg`,
+                      "--fragment-delay": `${(index % 9) * 0.045}s`,
                     } as CSSProperties
                   }
                 />
               ))}
             </div>
-            <div className="ash-field" aria-hidden="true">
-              {Array.from({ length: 64 }, (_, index) => (
+            <div className="particle-stream" aria-hidden="true">
+              {Array.from({ length: 96 }, (_, index) => (
                 <span
                   key={index}
                   style={
                     {
-                      "--ash-x": `${52 + ((index * 37) % 47)}%`,
-                      "--ash-drift": `${-180 + ((index * 71) % 360)}px`,
-                      "--ash-delay": `${(index % 16) * 0.055}s`,
-                      "--ash-duration": `${1.55 + (index % 9) * 0.12}s`,
-                      "--ash-size": `${2 + (index % 5)}px`,
+                      "--particle-x": `${3 + ((index * 37) % 91)}%`,
+                      "--particle-y": `${4 + ((index * 53) % 89)}%`,
+                      "--particle-dx": `${280 + (index % 11) * 64}px`,
+                      "--particle-dy": `${-95 + ((index * 67) % 190)}px`,
+                      "--particle-delay": `${(index % 18) * 0.035}s`,
+                      "--particle-duration": `${1.25 + (index % 9) * 0.1}s`,
+                      "--particle-size": `${1 + (index % 5)}px`,
                     } as CSSProperties
                   }
                 />
               ))}
             </div>
+            <div className="particle-horizon" aria-hidden="true" />
             <p>
-              <span>THE LAST RITE</span>
-              神谕正在化为飞灰
+              <span>THE UNBINDING</span>
+              神谕正在碎裂为粒子流
             </p>
           </div>
         )}

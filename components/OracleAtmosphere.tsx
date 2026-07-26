@@ -19,7 +19,7 @@ export type OraclePhase =
   | "summoning"
   | "sealed"
   | "reading"
-  | "burning";
+  | "dissolving";
 
 const phaseValue: Record<OraclePhase, number> = {
   auth: 0,
@@ -27,7 +27,7 @@ const phaseValue: Record<OraclePhase, number> = {
   summoning: 0.62,
   sealed: 0.9,
   reading: 1.18,
-  burning: 1.48,
+  dissolving: 1.48,
 };
 
 const vertexShader = `
@@ -100,7 +100,9 @@ const fragmentShader = `
     float radius = length(q);
     float angle = atan(q.y, q.x);
     float safeRadius = max(radius, 0.035);
-    float time = uTime * (0.055 + uEnergy * 0.075);
+    float vortexDrive = smoothstep(0.46, 0.6, uPhase) *
+      (1.0 - smoothstep(0.72, 0.9, uPhase));
+    float time = uTime * (0.055 + uEnergy * 0.075 + vortexDrive * 0.74);
 
     float pull = smoothstep(0.95, 0.12, radius);
     vec2 warped = q;
@@ -112,6 +114,11 @@ const fragmentShader = `
     float atmosphere = fbm(warped * 2.1 + vec2(time * 0.3, -time * 0.2));
     float filament = band(spiralA + (atmosphere - 0.5) * 0.72, 0.115);
     filament += band(spiralB + (atmosphere - 0.5) * 0.5, 0.09) * 0.38;
+    float turbine = band(
+      sin(angle * 12.0 - uTime * 7.2 + radius * 24.0),
+      0.13
+    );
+    filament += turbine * vortexDrive * 0.56;
     filament *= smoothstep(0.08, 0.2, radius) * (1.0 - smoothstep(0.38, 1.05, radius));
 
     float horizon = band(radius - (0.205 + sin(angle * 2.0 + time) * 0.003), 0.01);
@@ -119,18 +126,42 @@ const fragmentShader = `
     float farRing = band(radius - (0.52 + sin(angle * 7.0 + time * 0.7) * 0.015), 0.045);
     float lens = pow(max(0.0, 1.0 - abs(radius - 0.24) / 0.22), 4.0);
 
-    float current = filament * (0.11 + 0.2 * uEnergy);
-    current += horizon * (0.52 + uEnergy * 0.35);
-    current += echoRing * (0.055 + uPhase * 0.025);
-    current += farRing * 0.018;
-    current += lens * 0.045;
+    float filamentCurrent = filament * (0.11 + 0.2 * uEnergy);
+    float horizonCurrent = horizon * (0.52 + uEnergy * 0.35);
+    float echoCurrent = echoRing * (0.055 + uPhase * 0.025);
+    float farCurrent = farRing * 0.018;
+    float lensCurrent = lens * 0.045;
+
+    float spectrumOrbit = angle - uTime * mix(0.11, 1.35, vortexDrive) +
+      atmosphere * 0.24;
+    float spectrumBlend = smoothstep(
+      -0.62,
+      0.72,
+      cos(spectrumOrbit)
+    );
+    float spectralCrest = pow(
+      max(0.0, cos(spectrumOrbit - 0.24)),
+      7.0
+    );
+    vec3 horizonColor = mix(
+      uPrimaryColor,
+      uSecondaryColor,
+      spectrumBlend
+    );
+    float horizonHalo = exp(
+      -abs(radius - 0.205) * 46.0
+    ) * (0.045 + uEnergy * 0.035);
 
     vec3 color = mix(
       uVoidColor,
       uAtmosphereColor,
       atmosphere * 0.38 + lens * 0.22
     );
-    color += mix(uPrimaryColor, uSecondaryColor, horizon * 0.65) * current;
+    color += uPrimaryColor * (
+      filamentCurrent + echoCurrent + farCurrent + lensCurrent
+    );
+    color += horizonColor * (horizonCurrent + horizonHalo);
+    color += uSecondaryColor * horizon * spectralCrest * 0.16;
 
     float voidCore = 1.0 - smoothstep(0.105, 0.205, radius);
     color *= 1.0 - voidCore * 0.93;
@@ -138,18 +169,18 @@ const fragmentShader = `
     float readingVeil = smoothstep(1.0, 1.18, uPhase);
     color = mix(color, color * 0.42 + vec3(0.016, 0.014, 0.012), readingVeil * 0.74);
 
-    float burnPhase = smoothstep(1.22, 1.46, uPhase);
-    float burnPulse = 0.5 + 0.5 * sin(uTime * 8.5 + angle * 7.0);
-    float emberField = pow(valueNoise(p * 24.0 + vec2(0.0, uTime * 1.4)), 9.0);
-    float fireHalo = exp(-abs(radius - (0.235 + burnPulse * 0.018)) * 19.0);
-    color += burnPhase * (
-      vec3(1.25, 0.23, 0.018) * fireHalo * 0.18 +
-      vec3(0.95, 0.47, 0.09) * emberField * 0.2
+    float dissolvePhase = smoothstep(1.22, 1.46, uPhase);
+    float dissolvePulse = 0.5 + 0.5 * sin(uTime * 9.2 + angle * 8.0);
+    float particleField = pow(valueNoise(p * 28.0 + vec2(-uTime * 1.8, 0.0)), 9.0);
+    float fractureHalo = exp(-abs(radius - (0.235 + dissolvePulse * 0.018)) * 22.0);
+    color += dissolvePhase * (
+      uSecondaryColor * fractureHalo * 0.14 +
+      uPrimaryColor * particleField * 0.24
     );
     color = mix(
       color,
-      vec3(0.045, 0.015, 0.006) + color * 0.55,
-      burnPhase * 0.45
+      uVoidColor * 0.76 + color * 0.5,
+      dissolvePhase * 0.45
     );
 
     float vignette = smoothstep(1.12, 0.18, length(p * vec2(0.76, 1.0)));
@@ -310,18 +341,18 @@ export function OracleAtmosphere({
         />
         {!reducedMotion && (
           <Sparkles
-            count={phase === "burning" ? 130 : phase === "summoning" ? 96 : 58}
+            count={phase === "dissolving" ? 150 : phase === "summoning" ? 96 : 58}
             scale={[7, 4, 2]}
             size={0.85}
-            speed={phase === "burning" ? 0.2 : phase === "summoning" ? 0.14 : 0.055}
-            color={phase === "burning" ? "#e17a31" : palette.spark}
-            opacity={phase === "burning" ? 0.28 : phase === "reading" ? 0.08 : 0.18}
+            speed={phase === "dissolving" ? 0.32 : phase === "summoning" ? 0.14 : 0.055}
+            color={palette.spark}
+            opacity={phase === "dissolving" ? 0.36 : phase === "reading" ? 0.08 : 0.18}
           />
         )}
         <EffectComposer multisampling={0}>
           <Bloom
             mipmapBlur
-            intensity={phase === "burning" ? 1.1 : phase === "summoning" ? 0.85 : 0.52}
+            intensity={phase === "dissolving" ? 1.08 : phase === "summoning" ? 0.85 : 0.52}
             luminanceThreshold={0.18}
             luminanceSmoothing={0.72}
           />
