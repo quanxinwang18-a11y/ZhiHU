@@ -1,3 +1,5 @@
+import type { OracleProfile } from "@/lib/deities";
+
 const openings: Record<string, string> = {
   "zhang-yiming": "我先把情绪和事实分开。",
   "steve-jobs": "你真正要决定的，不是怎样让所有人满意。",
@@ -20,7 +22,27 @@ const middles: Record<string, string> = {
   bytedance: "高质量沟通不是更委婉，而是更高信息密度。把“我觉得”改成观察，把抱怨改成影响，把诉求改成可执行选择。直接同步关键相关方，记录结论；如果 Context 透明后仍无改善，再快速调整。",
 };
 
-export function makeMockOpinion(advisorId: string, question: string, followup?: string) {
+export function makeMockOpinion(
+  profileOrId: OracleProfile | string,
+  question: string,
+  followup?: string,
+) {
+  const advisorId =
+    typeof profileOrId === "string" ? profileOrId : profileOrId.id;
+  const customProfile =
+    typeof profileOrId === "string" || profileOrId.kind !== "custom_deity"
+      ? null
+      : profileOrId;
+  if (customProfile) {
+    const principle = customProfile.lens
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 118);
+    const prompt = followup
+      ? `你再次问到“${followup.slice(0, 54)}${followup.length > 54 ? "……" : ""}”`
+      : `你问的是“${question.slice(0, 54)}${question.length > 54 ? "……" : ""}”`;
+    return `以“${customProfile.name}”的神格凝视，${prompt}。我不会先替你寻找安心，而会守住这条判断法则：${principle}${customProfile.lens.length > 118 ? "……" : ""}。把眼前叙述拆成事实、代价与不可逆部分，找出最容易被忽略的一个假设，再用一次足够小的真实行动验证它。神谕只负责照亮分歧；最后承担选择的人仍然是你。`;
+  }
   const opening = openings[advisorId] || "我换一个角度看。";
   const middle = middles[advisorId] || "先把事实、代价和选择权分开。";
   const questionEcho = question.length > 46 ? `${question.slice(0, 46)}……` : question;

@@ -27,6 +27,12 @@ export async function DELETE(request: Request) {
     database
       .prepare("DELETE FROM advice_packs WHERE user_id = ?")
       .run(authResult.user.id);
+    database
+      .prepare("DELETE FROM custom_deities WHERE user_id = ?")
+      .run(authResult.user.id);
+    database
+      .prepare("DELETE FROM deity_images WHERE user_id = ?")
+      .run(authResult.user.id);
     database.prepare("DELETE FROM session WHERE userId = ?").run(authResult.user.id);
     database.prepare("DELETE FROM account WHERE userId = ?").run(authResult.user.id);
     database.prepare("DELETE FROM user WHERE id = ?").run(authResult.user.id);

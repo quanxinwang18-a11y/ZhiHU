@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildPackMarkdown } from "@/lib/export-pack";
 import { advisors } from "@/lib/advisors";
-import { buildAdvisorSystemPrompt } from "@/lib/real-ai";
+import {
+  buildAdvisorMessages,
+  buildAdvisorSystemPrompt,
+} from "@/lib/real-ai";
 import type { CardRow, MessageRow, PackRow } from "@/lib/packs";
 
 describe("顾问提示词与 Markdown 导出", () => {
@@ -11,6 +14,45 @@ describe("顾问提示词与 Markdown 导出", () => {
     expect(prompt).toContain(current.lens);
     expect(prompt).toContain(`不是${current.name}本人`);
     expect(prompt).not.toContain(advisors[1].lens);
+  });
+
+  it("按时间正序向真实模型传递多轮上下文", () => {
+    const history: MessageRow[] = [
+      {
+        id: "m1",
+        card_id: "card",
+        role: "user",
+        content: "第一次追问",
+        sequence: 1,
+        status: "complete",
+        created_at: 1,
+      },
+      {
+        id: "m2",
+        card_id: "card",
+        role: "assistant",
+        content: "第一次回答",
+        sequence: 2,
+        status: "complete",
+        created_at: 2,
+      },
+      {
+        id: "m3",
+        card_id: "card",
+        role: "user",
+        content: "第二次追问",
+        sequence: 3,
+        status: "complete",
+        created_at: 3,
+      },
+    ];
+
+    expect(buildAdvisorMessages("原始问题", history)).toEqual([
+      { role: "user", content: "原始问题" },
+      { role: "user", content: "第一次追问" },
+      { role: "assistant", content: "第一次回答" },
+      { role: "user", content: "第二次追问" },
+    ]);
   });
 
   it("Markdown 按落位顺序导出并转义用户控制字符", () => {

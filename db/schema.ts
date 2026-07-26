@@ -1,4 +1,5 @@
 import {
+  blob,
   index,
   integer,
   sqliteTable,
@@ -90,6 +91,11 @@ export const advicePacks = sqliteTable("advice_packs", {
   question: text("question").notNull(),
   problemMirror: text("problem_mirror"),
   visualSpectrum: text("visual_spectrum").notNull().default("obsidian"),
+  selectionMode: text("selection_mode", {
+    enum: ["random", "manual"],
+  })
+    .notNull()
+    .default("random"),
   requestedCardCount: integer("requested_card_count").notNull(),
   status: text("status", { enum: ["generating", "ready", "empty"] }).notNull(),
   selectedCardId: text("selected_card_id"),
@@ -97,6 +103,48 @@ export const advicePacks = sqliteTable("advice_packs", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
+
+export const deityImages = sqliteTable(
+  "deity_images",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    mimeType: text("mime_type", {
+      enum: ["image/jpeg", "image/png", "image/webp"],
+    }).notNull(),
+    imageData: blob("image_data", { mode: "buffer" }).notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [index("deity_images_user_idx").on(table.userId)],
+);
+
+export const customDeities = sqliteTable(
+  "custom_deities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    nameNormalized: text("name_normalized").notNull(),
+    prompt: text("prompt").notNull(),
+    imageId: text("image_id").references(() => deityImages.id),
+    randomEnabled: integer("random_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("custom_deities_user_name_uidx").on(
+      table.userId,
+      table.nameNormalized,
+    ),
+    index("custom_deities_user_updated_idx").on(table.userId, table.updatedAt),
+  ],
+);
 
 export const cards = sqliteTable(
   "cards",
@@ -110,6 +158,7 @@ export const cards = sqliteTable(
       enum: ["generating", "ready", "failed"],
     }).notNull(),
     initialOpinion: text("initial_opinion"),
+    oracleSnapshot: text("oracle_snapshot"),
     settledOrder: integer("settled_order"),
     startedAt: integer("started_at").notNull(),
     completedAt: integer("completed_at"),

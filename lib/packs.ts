@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { database } from "@/db";
-import { advisorMap, pickAdvisors } from "@/lib/advisors";
+import { advisorMap } from "@/lib/advisors";
+import {
+  oracleSnapshot,
+  parseOracleSnapshot,
+  pickOracleProfiles,
+  type OracleProfile,
+} from "@/lib/deities";
 import {
   normalizeSpectrumId,
   spectrumFromSeed,
@@ -18,6 +24,7 @@ export type PackRow = {
   question: string;
   problem_mirror: string | null;
   visual_spectrum: SpectrumId;
+  selection_mode?: "random" | "manual";
   requested_card_count: number;
   status: PackStatus;
   selected_card_id: string | null;
@@ -32,6 +39,7 @@ export type CardRow = {
   advisor_id: string;
   status: CardStatus;
   initial_opinion: string | null;
+  oracle_snapshot?: string | null;
   settled_order: number | null;
   started_at: number;
   completed_at: number | null;
@@ -65,19 +73,28 @@ export function serializePack(pack: PackRow, withMessages = false) {
         )
         .all(pack.id) as MessageRow[])
     : [];
+  const profileForCard = (card: CardRow): OracleProfile | undefined => {
+    const snapshot = parseOracleSnapshot(card.oracle_snapshot ?? null);
+    if (snapshot) return snapshot;
+    const advisor = advisorMap.get(card.advisor_id);
+    return advisor
+      ? { ...advisor, kind: "builtin", imageId: null }
+      : undefined;
+  };
   return {
     id: pack.id,
     title: pack.title,
     question: pack.question,
     problemMirror: pack.problem_mirror || "",
     visualSpectrum: normalizeSpectrumId(pack.visual_spectrum),
+    selectionMode: pack.selection_mode || "random",
     requestedCardCount: pack.requested_card_count,
     status: pack.status,
     selectedCardId: pack.selected_card_id,
     cards: cards.map((card) => ({
       id: card.id,
       advisorId: card.advisor_id,
-      advisor: advisorMap.get(card.advisor_id),
+      advisor: profileForCard(card),
       status: card.status,
       initialOpinion: card.initial_opinion || "",
       settledOrder: card.settled_order,
@@ -86,10 +103,10 @@ export function serializePack(pack: PackRow, withMessages = false) {
     })),
     advisors: cards
       .map((card) => {
-        const advisor = advisorMap.get(card.advisor_id);
-        return advisor
+        const profile = profileForCard(card);
+        return profile
           ? {
-              ...advisor,
+              ...profile,
               cardId: card.id,
               status:
                 card.status === "generating" ? ("waiting" as const) : card.status,
@@ -136,10 +153,10 @@ export function createPack(
   userId: string,
   question: string,
   count: number,
-  advisorIds?: string[],
+  selectedIds?: string[],
 ) {
   cleanupStaleGeneration(userId);
-  const selected = pickAdvisors(count, advisorIds);
+  const selected = pickOracleProfiles(userId, count, selectedIds);
   const now = Date.now();
   const id = randomUUID();
   const visualSpectrum = spectrumFromSeed(id);
@@ -147,8 +164,10 @@ export function createPack(
     database
       .prepare(
         `INSERT INTO advice_packs
-         (id, user_id, title, question, problem_mirror, visual_spectrum, requested_card_count, status, selected_card_id, decision, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NULL, ?, ?, 'generating', NULL, '', ?, ?)`,
+         (id, user_id, title, question, problem_mirror, visual_spectrum,
+          selection_mode, requested_card_count, status, selected_card_id,
+          decision, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NULL, ?, ?, ?, 'generating', NULL, '', ?, ?)`,
       )
       .run(
         id,
@@ -156,17 +175,25 @@ export function createPack(
         question.replace(/\s+/g, " ").slice(0, 20),
         question,
         visualSpectrum,
+        selectedIds ? "manual" : "random",
         selected.length,
         now,
         now,
       );
     const insertCard = database.prepare(
       `INSERT INTO cards
-       (id, card_pack_id, advisor_id, status, initial_opinion, settled_order, started_at, completed_at)
-       VALUES (?, ?, ?, 'generating', NULL, NULL, ?, NULL)`,
+       (id, card_pack_id, advisor_id, status, initial_opinion, oracle_snapshot,
+        settled_order, started_at, completed_at)
+       VALUES (?, ?, ?, 'generating', NULL, ?, NULL, ?, NULL)`,
     );
-    for (const advisor of selected) {
-      insertCard.run(randomUUID(), id, advisor.id, 0);
+    for (const profile of selected) {
+      insertCard.run(
+        randomUUID(),
+        id,
+        profile.id,
+        oracleSnapshot(profile),
+        0,
+      );
     }
   });
   create();
@@ -176,9 +203,9 @@ export function createPack(
 export function redrawPack(
   pack: PackRow,
   count: number,
-  advisorIds?: string[],
+  selectedIds?: string[],
 ) {
-  const selected = pickAdvisors(count, advisorIds);
+  const selected = pickOracleProfiles(pack.user_id, count, selectedIds);
   const now = Date.now();
   database.transaction(() => {
     database.prepare("DELETE FROM cards WHERE card_pack_id = ?").run(pack.id);
@@ -186,17 +213,25 @@ export function redrawPack(
       .prepare(
         `UPDATE advice_packs
          SET requested_card_count = ?, status = 'generating',
-             selected_card_id = NULL, decision = '', updated_at = ?
+             selection_mode = ?, selected_card_id = NULL, decision = '',
+             updated_at = ?
          WHERE id = ?`,
       )
-      .run(selected.length, now, pack.id);
+      .run(selected.length, selectedIds ? "manual" : "random", now, pack.id);
     const insert = database.prepare(
       `INSERT INTO cards
-       (id, card_pack_id, advisor_id, status, initial_opinion, settled_order, started_at, completed_at)
-       VALUES (?, ?, ?, 'generating', NULL, NULL, ?, NULL)`,
+       (id, card_pack_id, advisor_id, status, initial_opinion, oracle_snapshot,
+        settled_order, started_at, completed_at)
+       VALUES (?, ?, ?, 'generating', NULL, ?, NULL, ?, NULL)`,
     );
-    for (const advisor of selected) {
-      insert.run(randomUUID(), pack.id, advisor.id, 0);
+    for (const profile of selected) {
+      insert.run(
+        randomUUID(),
+        pack.id,
+        profile.id,
+        oracleSnapshot(profile),
+        0,
+      );
     }
   })();
 }

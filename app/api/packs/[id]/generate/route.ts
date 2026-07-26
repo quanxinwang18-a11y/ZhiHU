@@ -1,4 +1,5 @@
 import { advisorMap } from "@/lib/advisors";
+import { parseOracleSnapshot } from "@/lib/deities";
 import { makeMockOpinion, streamText } from "@/lib/mock-ai";
 import {
   beginChat,
@@ -36,9 +37,14 @@ export async function POST(
   if (!card || card.card_pack_id !== packId) {
     return Response.json({ error: "卡牌不存在" }, { status: 404 });
   }
-  const advisor = advisorMap.get(card.advisor_id);
-  if (!advisor) {
-    return Response.json({ error: "顾问不存在" }, { status: 400 });
+  const profile =
+    parseOracleSnapshot(card.oracle_snapshot ?? null) ??
+    (() => {
+      const advisor = advisorMap.get(card.advisor_id);
+      return advisor ? { ...advisor, kind: "builtin" as const, imageId: null } : undefined;
+    })();
+  if (!profile) {
+    return Response.json({ error: "封印不存在" }, { status: 400 });
   }
 
   const followup = body.message?.trim();
@@ -49,31 +55,10 @@ export async function POST(
   if (!isChat && card.status !== "generating") {
     return Response.json({ error: "这张卡牌已经生成" }, { status: 409 });
   }
-  if (!isChat && !claimCardGeneration(card.id)) {
-    return Response.json(
-      { error: "这张卡牌已有生成任务" },
-      { status: 409 },
-    );
-  }
   if (isChat && card.status !== "ready") {
     return Response.json({ error: "卡牌尚未完成" }, { status: 409 });
   }
 
-  let assistantMessageId: string | undefined;
-  if (isChat) {
-    try {
-      assistantMessageId = beginChat(card.id, followup!);
-    } catch (error) {
-      if (error instanceof Error && error.message === "CHAT_ALREADY_ACTIVE") {
-        return Response.json(
-          { error: "这张卡牌已有追问正在生成" },
-          { status: 409 },
-        );
-      }
-      throw error;
-    }
-  }
-  const history = recentConversation(card.id, 20);
   const mockMode = process.env.MOCK_AI !== "false";
   if (
     !mockMode &&
@@ -92,15 +77,38 @@ export async function POST(
 
   if (
     process.env.E2E_TESTING === "true" &&
-    pack.question.includes(`[FAIL:${advisor.id}]`)
+    pack.question.includes(`[FAIL:${profile.id}]`)
   ) {
     return Response.json({ error: "受控单卡失败" }, { status: 503 });
   }
 
+  if (!isChat && !claimCardGeneration(card.id)) {
+    return Response.json(
+      { error: "这张卡牌已有生成任务" },
+      { status: 409 },
+    );
+  }
+
+  let assistantMessageId: string | undefined;
+  if (isChat) {
+    try {
+      assistantMessageId = beginChat(card.id, followup!);
+    } catch (error) {
+      if (error instanceof Error && error.message === "CHAT_ALREADY_ACTIVE") {
+        return Response.json(
+          { error: "这张卡牌已有追问正在生成" },
+          { status: 409 },
+        );
+      }
+      throw error;
+    }
+  }
+  const history = recentConversation(card.id, 20);
+
   console.log("[职乎] AI 请求开始", {
     requestId,
     userId: authResult.user.id,
-    advisorId: advisor.id,
+    advisorId: profile.id,
     requestType: isChat ? "chat" : "opinion",
   });
 
@@ -113,7 +121,7 @@ export async function POST(
     console.log("[职乎] AI 请求完成", {
       requestId,
       userId: authResult.user.id,
-      advisorId: advisor.id,
+      advisorId: profile.id,
       requestType: isChat ? "chat" : "opinion",
       durationMs: Date.now() - startedAt,
       status: "complete",
@@ -131,7 +139,7 @@ export async function POST(
 
   if (!mockMode) {
     const result = streamRealOpinion({
-      advisor,
+      advisor: profile,
       question: pack.question,
       history,
       onFinish: finish,
@@ -139,7 +147,7 @@ export async function POST(
         console.error("[职乎] AI 请求失败", {
           requestId,
           userId: authResult.user.id,
-          advisorId: advisor.id,
+          advisorId: profile.id,
           requestType: isChat ? "chat" : "opinion",
           durationMs: Date.now() - startedAt,
           status: "failed",
@@ -149,7 +157,7 @@ export async function POST(
     return result.toTextStreamResponse({ headers });
   }
 
-  const text = makeMockOpinion(advisor.id, pack.question, followup);
+  const text = makeMockOpinion(profile, pack.question, followup);
   const delayMs =
     process.env.E2E_TESTING === "true" && pack.question.includes("[SLOW]")
       ? 45

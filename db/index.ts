@@ -96,6 +96,8 @@ export function ensureBusinessSchema() {
       problem_mirror TEXT,
       visual_spectrum TEXT NOT NULL DEFAULT 'obsidian'
         CHECK(visual_spectrum IN ('obsidian', 'lunar', 'ziwei', 'calamity', 'jade')),
+      selection_mode TEXT NOT NULL DEFAULT 'random'
+        CHECK(selection_mode IN ('random', 'manual')),
       requested_card_count INTEGER NOT NULL CHECK(requested_card_count BETWEEN 1 AND 8),
       status TEXT NOT NULL CHECK(status IN ('generating', 'ready', 'empty')),
       selected_card_id TEXT,
@@ -108,12 +110,43 @@ export function ensureBusinessSchema() {
     CREATE UNIQUE INDEX IF NOT EXISTS advice_packs_one_active_user_idx
       ON advice_packs(user_id) WHERE status = 'generating';
 
+    CREATE TABLE IF NOT EXISTS deity_images (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      mime_type TEXT NOT NULL
+        CHECK(mime_type IN ('image/jpeg', 'image/png', 'image/webp')),
+      image_data BLOB NOT NULL,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS deity_images_user_idx
+      ON deity_images(user_id);
+
+    CREATE TABLE IF NOT EXISTS custom_deities (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      name_normalized TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      image_id TEXT,
+      random_enabled INTEGER NOT NULL DEFAULT 1
+        CHECK(random_enabled IN (0, 1)),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE,
+      FOREIGN KEY(image_id) REFERENCES deity_images(id),
+      UNIQUE(user_id, name_normalized)
+    );
+    CREATE INDEX IF NOT EXISTS custom_deities_user_updated_idx
+      ON custom_deities(user_id, updated_at DESC);
+
     CREATE TABLE IF NOT EXISTS cards (
       id TEXT PRIMARY KEY,
       card_pack_id TEXT NOT NULL,
       advisor_id TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('generating', 'ready', 'failed')),
       initial_opinion TEXT,
+      oracle_snapshot TEXT,
       settled_order INTEGER,
       started_at INTEGER NOT NULL,
       completed_at INTEGER,
@@ -148,6 +181,20 @@ export function ensureBusinessSchema() {
       ADD COLUMN visual_spectrum TEXT NOT NULL DEFAULT 'obsidian'
         CHECK(visual_spectrum IN ('obsidian', 'lunar', 'ziwei', 'calamity', 'jade'))
     `);
+  }
+  if (!packColumns.some((column) => column.name === "selection_mode")) {
+    database.exec(`
+      ALTER TABLE advice_packs
+      ADD COLUMN selection_mode TEXT NOT NULL DEFAULT 'random'
+        CHECK(selection_mode IN ('random', 'manual'))
+    `);
+  }
+
+  const cardColumns = database
+    .prepare("PRAGMA table_info(cards)")
+    .all() as { name: string }[];
+  if (!cardColumns.some((column) => column.name === "oracle_snapshot")) {
+    database.exec("ALTER TABLE cards ADD COLUMN oracle_snapshot TEXT");
   }
 }
 

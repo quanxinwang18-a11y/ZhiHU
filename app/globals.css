@@ -121,7 +121,7 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .welcome { margin-right: 10px; color: #7f796e; font-size: 11px; }
 .icon-button { width: 38px; height: 38px; border: 0; background: radial-gradient(circle, var(--spectral-whisper), transparent 68%); cursor: pointer; border-radius: 50%; color: #9d9482; opacity: .58; backdrop-filter: blur(8px); }
 .icon-button:hover, .icon-button.active { opacity: 1; color: var(--bright); text-shadow: 0 0 18px var(--spectral-glow); box-shadow: 0 0 32px var(--spectral-whisper); }
-.question-stage { position: relative; z-index: 3; min-height: calc(100vh - 92px); padding: clamp(82px, 12vh, 145px) 20px 120px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.question-stage { position: relative; z-index: 4; min-height: calc(100vh - 92px); padding: clamp(82px, 12vh, 145px) 20px 120px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .question-stage h1 { margin: 6px 0 18px; max-width: 1180px; font: 400 clamp(38px, 4vw, 64px)/1.28 var(--serif); letter-spacing: .12em; text-indent: .12em; }
 .floating-text { position: relative; display: block; width: 100%; perspective: 900px; transform-style: preserve-3d; isolation: isolate; }
 .floating-text__body { position: relative; z-index: 2; display: block; width: 100%; transform-style: preserve-3d; }
@@ -188,8 +188,8 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .consult-button:disabled { cursor: wait; animation: goldPulse 1.5s ease-in-out infinite; }
 @keyframes goldPulse { 50% { box-shadow: 0 0 40px var(--spectral-trace); } }
 .stage-error { color: #d98b75; font-size: 12px; }
-.input-count-control { position: absolute; right: 4.5vw; bottom: 155px; }
-.input-count-control .control-popover { top: 50px; }
+.input-count-control { position: absolute; right: 4.5vw; bottom: 155px; z-index: 5; }
+.input-count-control .control-popover { top: auto; bottom: 56px; transform-origin: 100% 100%; }
 
 .pack-stage {
   position: relative;
@@ -238,6 +238,94 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .advisor-orb-grid > button.active::after { content: ""; position: absolute; right: 11px; top: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--advisor-orb-accent); box-shadow: 0 0 10px var(--advisor-orb-accent); }
 .advisor-orb-grid > button.active .advisor-orb { transform: translateY(-2px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--advisor-orb-accent) 65%, transparent), 0 0 0 4px color-mix(in srgb, var(--advisor-orb-accent) 8%, transparent), 0 0 28px color-mix(in srgb, var(--advisor-orb-accent) 20%, transparent); }
 .advisor-orb-grid > button.active .advisor-orb img { filter: grayscale(.2) contrast(1.08) brightness(.82); }
+
+/* Custom deity forge and selection */
+.control-popover:has(.custom-deities-heading) { width: min(430px, calc(100vw - 40px)); max-height: min(720px, calc(100dvh - 190px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; }
+.perspective-commandbar { position: sticky; z-index: 4; top: -22px; margin: -22px -22px 20px; padding: 19px 22px 15px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(180deg, color-mix(in srgb, var(--ink-deep) 98%, transparent) 0 78%, transparent); backdrop-filter: blur(20px); }
+.perspective-commandbar small { display: block; margin-bottom: 4px; color: #514b43; font: 6px var(--sans); letter-spacing: .25em; }
+.perspective-commandbar strong { color: #aaa195; font: 400 12px var(--serif); letter-spacing: .12em; }
+.perspective-commandbar > button { min-width: 94px; padding: 9px 13px; border: 1px solid color-mix(in srgb, var(--spectrum-primary) 20%, transparent); background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-primary) 12%, transparent), transparent 72%); color: var(--gold); cursor: pointer; font: 10px var(--serif); letter-spacing: .14em; transition: border-color .45s var(--ease-oracle), color .45s var(--ease-oracle), box-shadow .45s var(--ease-oracle); }
+.perspective-commandbar > button:hover { border-color: color-mix(in srgb, var(--spectrum-primary) 42%, transparent); color: var(--bright); box-shadow: 0 0 24px var(--spectral-haze); }
+.selection-mode button { min-width: 122px; padding: 0 0 10px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: #5d574f; cursor: pointer; font: 10px var(--serif); letter-spacing: .11em; transition: color .45s var(--ease-oracle), border-color .45s var(--ease-oracle); }
+.selection-mode button small { display: block; margin-bottom: 5px; color: #48433c; font: 6px var(--sans); letter-spacing: .24em; }
+.selection-mode button.active { border-color: color-mix(in srgb, var(--spectrum-primary) 36%, transparent); color: var(--bright); text-shadow: 0 0 18px color-mix(in srgb, var(--spectrum-primary) 26%, transparent); }
+.selection-mode button.active small { color: color-mix(in srgb, var(--spectrum-primary) 64%, #625b51); }
+.gravity-draw-panel > p, .manual-selection-note { margin: 4px 0 16px; color: #746e64; text-align: center; font: 10px/1.7 var(--serif); }
+.gravity-pool-summary { margin-top: 15px; padding: 14px 0 2px; display: flex; justify-content: space-between; border-top: 1px solid color-mix(in srgb, var(--spectrum-primary) 10%, transparent); }
+.gravity-pool-summary strong { color: #a09789; font: 10px var(--serif); letter-spacing: .06em; }
+.gravity-pool-summary span { color: #5e594f; font-size: 8px; }
+.manual-selection-note { display: flex; justify-content: space-between; text-align: left; }
+.manual-selection-note span { color: var(--gold); font: 8px var(--sans); letter-spacing: .12em; }
+.custom-deities-heading { margin-top: 20px; padding-top: 17px; display: flex; align-items: end; justify-content: space-between; border-top: 1px solid color-mix(in srgb, var(--spectrum-primary) 12%, transparent); }
+.custom-deities-heading small { display: block; margin-bottom: 4px; color: #514b43; font: 6px var(--sans); letter-spacing: .25em; }
+.custom-deities-heading strong { color: #aaa195; font: 400 12px var(--serif); letter-spacing: .12em; }
+.deity-empty-state { padding: 24px 8px 9px; text-align: center; }
+.deity-empty-state p { margin: 0 0 7px; color: #777066; font: 11px var(--serif); }
+.deity-empty-state span { color: #4e4942; font: 8px/1.7 var(--serif); }
+.custom-deity-list { display: grid; gap: 6px; margin-top: 13px; }
+.custom-deity-list article { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 61px; background: radial-gradient(circle at 0 50%, color-mix(in srgb, var(--deity-accent) 7%, transparent), transparent 58%); }
+.deity-select, .deity-gravity-toggle { min-width: 0; padding: 7px 4px; display: flex; align-items: center; gap: 11px; border: 0; background: transparent; color: #8c8478; text-align: left; cursor: pointer; }
+.deity-miniature { position: relative; flex: 0 0 42px; width: 42px; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--deity-accent) 15%, #11100e), #050504 72%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--deity-accent) 25%, transparent), 0 0 22px color-mix(in srgb, var(--deity-accent) 5%, transparent); }
+.deity-miniature img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(.8) contrast(1.08) brightness(.72); }
+.deity-miniature strong { color: color-mix(in srgb, var(--deity-accent) 75%, var(--bone)); font: 17px var(--serif); text-shadow: 0 0 16px var(--deity-accent); }
+.deity-select > div, .deity-gravity-toggle > div { min-width: 0; }
+.deity-select strong, .deity-gravity-toggle strong { display: block; overflow: hidden; color: #aaa195; font: 10px var(--serif); letter-spacing: .08em; text-overflow: ellipsis; white-space: nowrap; }
+.deity-select small, .deity-gravity-toggle small { display: block; margin-top: 4px; color: #5c564e; font: 7px var(--sans); letter-spacing: .12em; }
+.deity-gravity-toggle > i { margin-left: auto; width: 19px; height: 19px; border-radius: 50%; box-shadow: inset 0 0 0 1px #4e4941; transition: box-shadow .5s, background .5s; }
+.custom-deity-list article.in-gravity .deity-gravity-toggle > i { background: radial-gradient(circle, var(--deity-accent) 0 14%, transparent 20%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--deity-accent) 58%, transparent), 0 0 15px color-mix(in srgb, var(--deity-accent) 20%, transparent); }
+.custom-deity-list article.active { background: radial-gradient(circle at 0 50%, color-mix(in srgb, var(--deity-accent) 14%, transparent), transparent 64%); }
+.custom-deity-list article.active .deity-miniature { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--deity-accent) 72%, transparent), 0 0 26px color-mix(in srgb, var(--deity-accent) 18%, transparent); }
+.deity-row-actions { display: flex; flex-direction: column; gap: 4px; padding-right: 2px; }
+.deity-row-actions button { padding: 2px 4px; border: 0; background: transparent; color: #514b43; cursor: pointer; font: 7px var(--sans); letter-spacing: .08em; }
+.deity-row-actions button:hover { color: var(--gold); }
+.reroll-button:disabled { opacity: .25; cursor: default; }
+
+.deity-forge-layer { position: fixed; z-index: 145; inset: 0; display: grid; place-items: center; padding: 32px; background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--spectrum-primary) 7%, rgba(5,4,3,.9)), rgba(3,3,2,.96) 74%); backdrop-filter: blur(18px) saturate(.58); animation: manuscriptIn .55s var(--ease-oracle); }
+.deity-forge { position: relative; width: min(940px, 92vw); max-height: calc(100vh - 64px); overflow-y: auto; padding: 48px 56px 38px; background: radial-gradient(ellipse at 22% 10%, color-mix(in srgb, var(--spectrum-primary) 6%, transparent), transparent 52%), color-mix(in srgb, var(--ink-deep) 96%, transparent); box-shadow: 0 50px 150px rgba(0,0,0,.75), inset 0 1px color-mix(in srgb, var(--spectrum-secondary) 4%, transparent); }
+.deity-forge::before { content: ""; position: absolute; left: 0; top: 0; width: 1px; height: 100%; background: linear-gradient(transparent, color-mix(in srgb, var(--spectrum-primary) 34%, transparent), transparent); }
+.deity-forge-close { position: absolute; right: 22px; top: 18px; border: 0; background: transparent; color: #6d665c; cursor: pointer; font: 24px var(--serif); }
+.deity-forge > header { width: min(660px, 88%); margin: 0 auto 38px; text-align: center; }
+.deity-forge > header h2 { margin: 7px 0 12px; color: var(--bone); font: 400 32px var(--serif); letter-spacing: .2em; }
+.deity-forge > header > p:last-child { margin: 0; color: #756e64; font: 11px/1.9 var(--serif); }
+.deity-forge-grid { display: grid; grid-template-columns: 280px 1fr; gap: 44px; }
+.deity-field-label { display: block; margin-bottom: 11px; color: #aaa195; font: 12px var(--serif); letter-spacing: .12em; }
+.deity-field-label small { display: block; margin-bottom: 4px; color: #504a42; font: 6px var(--sans); letter-spacing: .27em; }
+.deity-image-well { position: relative; width: 100%; aspect-ratio: 2/3; display: grid; place-items: center; overflow: hidden; border: 0; border-radius: 2px 24px 2px 2px; background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--deity-accent) 12%, transparent), #060605 66%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--deity-accent) 22%, transparent), 0 28px 70px rgba(0,0,0,.5); cursor: pointer; }
+.deity-image-well::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 52%, rgba(3,3,2,.9)); pointer-events: none; }
+.deity-image-well img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(.75) contrast(1.08) brightness(.78); }
+.deity-image-well > strong { position: relative; z-index: 1; color: color-mix(in srgb, var(--deity-accent) 72%, var(--bone)); font: 64px var(--serif); text-shadow: 0 0 44px color-mix(in srgb, var(--deity-accent) 45%, transparent); }
+.deity-image-well > span { position: absolute; z-index: 2; bottom: 24px; color: #625b52; font: 8px var(--sans); letter-spacing: .18em; }
+.deity-image-actions { display: flex; justify-content: center; gap: 18px; margin-top: 12px; }
+.deity-image-actions button { border: 0; background: transparent; color: #746d62; cursor: pointer; font: 8px var(--sans); letter-spacing: .1em; }
+.deity-manifestation > p { color: #514b44; text-align: center; font: 7px var(--sans); }
+.deity-inscription-fields { display: grid; align-content: start; gap: 27px; padding-top: 1px; }
+.deity-inscription-fields label { position: relative; display: block; }
+.deity-inscription-fields input[type="text"], .deity-inscription-fields input:not([type]), .deity-inscription-fields textarea { width: 100%; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--spectrum-primary) 13%, transparent); outline: 0; background: radial-gradient(ellipse at 20% 100%, var(--spectral-whisper), transparent 72%); color: var(--bone); caret-color: var(--gold); font: 13px/1.8 var(--serif); }
+.deity-inscription-fields input { height: 50px; padding: 5px 8px; }
+.deity-inscription-fields textarea { min-height: 188px; padding: 14px 8px; resize: vertical; }
+.deity-inscription-fields input:focus, .deity-inscription-fields textarea:focus { border-color: color-mix(in srgb, var(--spectrum-primary) 42%, transparent); }
+.deity-inscription-fields label > em { position: absolute; right: 5px; bottom: 5px; color: #4f4941; font: 7px var(--sans); }
+.gravity-field-toggle { display: grid !important; grid-template-columns: 32px 1fr; gap: 15px; align-items: start; cursor: pointer; }
+.gravity-field-toggle > input { position: absolute; opacity: 0; pointer-events: none; }
+.gravity-field-toggle > span { position: relative; display: block; width: 28px; height: 28px; margin-top: 4px; border-radius: 50%; box-shadow: inset 0 0 0 1px #514a41; }
+.gravity-field-toggle > span i { position: absolute; inset: 8px; border-radius: 50%; background: var(--gold); opacity: 0; box-shadow: 0 0 16px var(--gold); transition: opacity .5s; }
+.gravity-field-toggle > input:checked + span { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--spectrum-primary) 64%, transparent), 0 0 22px var(--spectral-haze); }
+.gravity-field-toggle > input:checked + span i { opacity: 1; }
+.gravity-field-toggle small { display: block; color: #514a42; font: 6px var(--sans); letter-spacing: .25em; }
+.gravity-field-toggle strong { display: block; margin: 5px 0; color: #a69d90; font: 12px var(--serif); letter-spacing: .1em; }
+.gravity-field-toggle p { margin: 0; color: #5d574f; font: 8px/1.7 var(--serif); }
+.deity-forge form > .form-error { margin: 22px 0 0; text-align: center; }
+.deity-forge form > footer { margin-top: 30px; padding-top: 22px; display: flex; justify-content: flex-end; gap: 26px; border-top: 1px solid color-mix(in srgb, var(--spectrum-primary) 9%, transparent); }
+.deity-forge form > footer button { padding: 12px 5px; border: 0; background: transparent; color: #6c655b; cursor: pointer; font: 9px var(--sans); letter-spacing: .12em; }
+.deity-forge form > footer .forge-submit { min-width: 146px; color: var(--bone); background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-primary) 24%, transparent), transparent 72%); }
+.deity-forge form > footer button:disabled { opacity: .35; cursor: default; }
+
+.custom-deity-sigil { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 43%, color-mix(in srgb, var(--card-accent) 18%, transparent), transparent 38%), radial-gradient(circle at 50% 48%, #17140f, #030303 72%); }
+.custom-deity-sigil::before, .custom-deity-sigil i { content: ""; position: absolute; width: 56%; aspect-ratio: 1; border: 1px solid color-mix(in srgb, var(--card-accent) 34%, transparent); transform: rotate(45deg); }
+.custom-deity-sigil i { width: 38%; border-radius: 50%; transform: none; }
+.custom-deity-sigil strong { position: relative; z-index: 1; color: color-mix(in srgb, var(--card-accent) 68%, var(--bone)); font: 58px var(--serif); text-shadow: 0 0 38px color-mix(in srgb, var(--card-accent) 36%, transparent); }
+.custom-deity-sigil span { position: absolute; bottom: 28%; color: color-mix(in srgb, var(--card-accent) 38%, #625b52); font: 7px var(--sans); letter-spacing: .22em; }
+.custom-deity-sigil.featured { --card-accent: var(--spectrum-primary); }
 .reroll-button { width: 100%; margin-top: 17px; padding: 11px; border: 0; background: radial-gradient(ellipse, var(--spectral-haze), transparent 72%); color: var(--bright); cursor: pointer; font-size: 11px; }
 .new-question-button { width: 100%; margin-top: 8px; padding: 10px; border: 0; background: transparent; color: #777064; cursor: pointer; font-size: 10px; }
 .card-rail { --card-width: clamp(294px, calc((100vw - 9vw - 54px) / 4), 380px); display: grid; grid-auto-flow: column; grid-auto-columns: var(--card-width); align-items: start; justify-content: start; gap: 18px; overflow-x: auto; overflow-y: hidden; padding: 10px 1px 26px; scroll-snap-type: x mandatory; scrollbar-color: var(--spectral-line) transparent; }
@@ -341,6 +429,9 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
   0% { opacity: .08; transform: translate(-50%,-50%) scale(.2) rotate(45deg); }
   100% { opacity: 1; transform: translate(-50%,-50%) scale(1.18) rotate(45deg); }
 }
+.oracle-card.settled-card { opacity: 1; transform: translateY(0); animation: none; }
+.oracle-card.settled-card:hover { transform: translateY(-3px); }
+.oracle-card.settled-card.selected { transform: translateY(-5px); }
 .oracle-card.compacting-card {
   opacity: 1;
   pointer-events: none;
@@ -612,6 +703,8 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
   .oracle-inquiry { grid-template-columns: 125px 1fr 112px; }
   .decision-area { grid-template-columns: 180px 1fr; }
   .decision-area .quiet-button { grid-column: 2; height: 40px; }
+  .deity-forge { padding: 42px; }
+  .deity-forge-grid { grid-template-columns: 230px 1fr; gap: 34px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }

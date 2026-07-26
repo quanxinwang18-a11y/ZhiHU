@@ -1,4 +1,5 @@
 import { advisorMap } from "@/lib/advisors";
+import { parseOracleSnapshot } from "@/lib/deities";
 import type { CardRow, MessageRow, PackRow } from "@/lib/packs";
 
 function escapeMarkdown(value: string) {
@@ -15,7 +16,9 @@ export function buildPackMarkdown({
   messages: MessageRow[];
 }) {
   const sections = cards.map((card) => {
-    const advisor = advisorMap.get(card.advisor_id);
+    const profile =
+      parseOracleSnapshot(card.oracle_snapshot ?? null) ??
+      advisorMap.get(card.advisor_id);
     const conversation = messages
       .filter((message) => message.card_id === card.id)
       .map((message) => {
@@ -30,9 +33,13 @@ export function buildPackMarkdown({
           : `${escapeMarkdown(message.content)}${stopped}`;
       })
       .join("\n\n");
-    return `## ${escapeMarkdown(advisor?.name || card.advisor_id)}
+    const identityNote =
+      profile && "kind" in profile && profile.kind === "custom_deity"
+        ? `\n\n> 自定义神明 · 基于封存神格的 AI 演绎\n\n> 神格：${escapeMarkdown(profile.lens)}`
+        : "\n\n> AI 模拟观点，并非本人或组织发言";
+    return `## ${escapeMarkdown(profile?.name || card.advisor_id)}
 
-> AI 模拟观点，并非本人或组织发言
+${identityNote}
 
 ${escapeMarkdown(card.initial_opinion || "尚未生成意见")}
 ${conversation ? `\n\n### 追问记录\n\n${conversation}` : ""}`;

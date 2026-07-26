@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -18,6 +19,10 @@ import {
   useState,
 } from "react";
 import { AuthGate } from "@/components/AuthGate";
+import {
+  DeityForge,
+  type CustomDeity,
+} from "@/components/DeityForge";
 import { FloatingText } from "@/components/FloatingText";
 import { advisors as advisorCatalog } from "@/lib/advisors";
 import {
@@ -37,11 +42,14 @@ const OracleAtmosphere = dynamic(
 
 type Advisor = {
   id: string;
+  kind: "builtin" | "custom_deity";
   name: string;
   label: string;
   epithet: string;
-  image: string;
+  image: string | null;
+  imageId: string | null;
   accent: string;
+  lens: string;
   cardId: string;
   status: CardState;
   initialOpinion: string;
@@ -62,6 +70,7 @@ type Pack = {
   question: string;
   problemMirror: string;
   visualSpectrum: SpectrumId;
+  selectionMode: "random" | "manual";
   requestedCardCount: number;
   status: "generating" | "ready" | "empty";
   selectedCardId: string | null;
@@ -147,71 +156,208 @@ function Icon({
 }
 
 function PerspectivePicker({
+  mode,
   count,
   selectedAdvisorIds,
+  deities,
+  onModeChange,
   onCountSelect,
   onAdvisorToggle,
+  onForge,
+  onEditDeity,
+  onToggleDeityRandom,
+  onDeleteDeity,
 }: {
+  mode: "random" | "manual";
   count: number;
   selectedAdvisorIds: string[];
+  deities: CustomDeity[];
+  onModeChange: (mode: "random" | "manual") => void;
   onCountSelect: (count: number) => void;
   onAdvisorToggle: (advisorId: string) => void;
+  onForge: () => void;
+  onEditDeity: (deity: CustomDeity) => void;
+  onToggleDeityRandom: (deity: CustomDeity) => void;
+  onDeleteDeity: (deity: CustomDeity) => void;
 }) {
-  const limited = selectedAdvisorIds.length > 0;
+  const randomDeities = deities.filter((deity) => deity.randomEnabled);
+  const totalPool = advisorCatalog.length + randomDeities.length;
 
   return (
     <div className="perspective-picker">
-      <div className="selection-mode" aria-live="polite">
-        <span className={!limited ? "active" : ""}>随机 · {count}</span>
+      <div className="perspective-commandbar">
+        <div>
+          <small>ORACLE FORGE</small>
+          <strong>视角封印</strong>
+        </div>
+        <button type="button" onClick={onForge}>
+          ＋ 造神
+        </button>
+      </div>
+
+      <div className="selection-mode" role="tablist" aria-label="显影方式">
+        <button
+          type="button"
+          className={mode === "random" ? "active" : ""}
+          onClick={() => onModeChange("random")}
+          role="tab"
+          aria-selected={mode === "random"}
+        >
+          <small>GRAVITY DRAW</small>
+          引力抽取
+        </button>
         <i />
-        <span className={limited ? "active" : ""}>
-          限定{limited ? ` · ${selectedAdvisorIds.length}` : ""}
-        </span>
+        <button
+          type="button"
+          className={mode === "manual" ? "active" : ""}
+          onClick={() => onModeChange("manual")}
+          role="tab"
+          aria-selected={mode === "manual"}
+        >
+          <small>CHOSEN FORMS</small>
+          指定显影
+        </button>
       </div>
-      <div className={`number-grid ${limited ? "inactive" : ""}`}>
-        {Array.from({ length: 8 }, (_, index) => index + 1).map((number) => (
-          <button
-            type="button"
-            aria-label={`随机抽取 ${number} 张`}
-            className={!limited && count === number ? "active" : ""}
-            onClick={() => onCountSelect(number)}
-            key={number}
-          >
-            {number}
-          </button>
-        ))}
+
+      {mode === "random" ? (
+        <div className="gravity-draw-panel">
+          <p>让引力决定，这一次哪些封印会被触及。</p>
+          <div className="number-grid">
+            {Array.from({ length: 8 }, (_, index) => index + 1).map((number) => (
+              <button
+                type="button"
+                aria-label={`随机抽取 ${number} 张`}
+                className={count === number ? "active" : ""}
+                onClick={() => onCountSelect(number)}
+                key={number}
+              >
+                {number}
+              </button>
+            ))}
+          </div>
+          <div className="gravity-pool-summary" aria-live="polite">
+            <strong>引力场中已有 {totalPool} 枚封印</strong>
+            <span>
+              {advisorCatalog.length} 个既定视角 · {randomDeities.length} 位自定义神明
+            </span>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="manual-selection-note">
+            亲自决定，这一次要触及哪些封印。
+            <span>已定 {selectedAdvisorIds.length} / 8</span>
+          </p>
+          <div className="advisor-orb-grid">
+            {advisorCatalog.map((advisor) => {
+              const active = selectedAdvisorIds.includes(advisor.id);
+              return (
+                <button
+                  type="button"
+                  aria-label={`${active ? "移除" : "选择"} ${advisor.name} 视角`}
+                  className={active ? "active" : ""}
+                  onClick={() => onAdvisorToggle(advisor.id)}
+                  key={advisor.id}
+                >
+                  <span className="advisor-orb">
+                    <Image src={advisor.image} alt="" fill sizes="52px" />
+                  </span>
+                  <small>{advisor.name}</small>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <div className="custom-deities-heading">
+        <div>
+          <small>CUSTOM DEITIES</small>
+          <strong>自定义神明</strong>
+        </div>
       </div>
-      <div className="advisor-orb-grid">
-        {advisorCatalog.map((advisor) => {
-          const active = selectedAdvisorIds.includes(advisor.id);
-          return (
-            <button
-              type="button"
-              className={active ? "active" : ""}
-              aria-label={`${active ? "移除" : "选择"} ${advisor.name} 视角`}
-              aria-pressed={active}
-              data-advisor-id={advisor.id}
-              onClick={() => onAdvisorToggle(advisor.id)}
-              style={
-                {
-                  "--advisor-orb-accent": advisor.accent,
-                } as CSSProperties
-              }
-              key={advisor.id}
-            >
-              <span className="advisor-orb">
-                <Image
-                  src={advisor.image}
-                  alt=""
-                  fill
-                  sizes="52px"
-                />
-              </span>
-              <small>{advisor.name}</small>
-            </button>
-          );
-        })}
-      </div>
+
+      {deities.length === 0 ? (
+        <div className="deity-empty-state">
+          <p>尚无神明因你而生。</p>
+          <span>为一个名字赋予神格，让新的声音进入这片宇宙。</span>
+        </div>
+      ) : (
+        <div className="custom-deity-list">
+          {deities.map((deity) => {
+            const active = selectedAdvisorIds.includes(deity.id);
+            return (
+              <article
+                key={deity.id}
+                className={`${active ? "active" : ""} ${deity.randomEnabled ? "in-gravity" : ""}`}
+                style={
+                  { "--deity-accent": deity.accent } as CSSProperties
+                }
+              >
+                {mode === "manual" ? (
+                  <button
+                    type="button"
+                    className="deity-select"
+                    onClick={() => onAdvisorToggle(deity.id)}
+                    aria-label={`${active ? "移除" : "选择"} ${deity.name} 神明`}
+                  >
+                    <span className="deity-miniature">
+                      {deity.image ? (
+                        <img src={deity.image} alt="" />
+                      ) : (
+                        <strong>{deity.name.slice(0, 1)}</strong>
+                      )}
+                    </span>
+                    <div>
+                      <strong>{deity.name}</strong>
+                      <small>{active ? "封印已定" : "自定义神明"}</small>
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="deity-gravity-toggle"
+                    onClick={() => onToggleDeityRandom(deity)}
+                    aria-label={`${deity.randomEnabled ? "暂离" : "进入"}引力场：${deity.name}`}
+                    aria-pressed={deity.randomEnabled}
+                  >
+                    <span className="deity-miniature">
+                      {deity.image ? (
+                        <img src={deity.image} alt="" />
+                      ) : (
+                        <strong>{deity.name.slice(0, 1)}</strong>
+                      )}
+                    </span>
+                    <div>
+                      <strong>{deity.name}</strong>
+                      <small>
+                        {deity.randomEnabled ? "位于引力场" : "暂离引力场"}
+                      </small>
+                    </div>
+                    <i />
+                  </button>
+                )}
+                <div className="deity-row-actions">
+                  <button
+                    type="button"
+                    onClick={() => onEditDeity(deity)}
+                    aria-label={`重塑神格：${deity.name}`}
+                  >
+                    重塑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteDeity(deity)}
+                    aria-label={`使其沉寂：${deity.name}`}
+                  >
+                    沉寂
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -296,13 +442,25 @@ function AdvisorCard({
         <div className="card-face card-back" aria-hidden={!revealed}>
           <div className="card-index">0{index + 1}</div>
           <div className="card-art">
-            <Image
-              src={advisor.image}
-              alt=""
-              fill
-              sizes="(max-width: 1300px) 22vw, 280px"
-              priority={index < 4}
-            />
+            {advisor.image ? (
+              advisor.kind === "custom_deity" ? (
+                <img src={advisor.image} alt="" />
+              ) : (
+                <Image
+                  src={advisor.image}
+                  alt=""
+                  fill
+                  sizes="(max-width: 1300px) 22vw, 280px"
+                  priority={index < 4}
+                />
+              )
+            ) : (
+              <div className="custom-deity-sigil" aria-hidden="true">
+                <i />
+                <strong>{advisor.name.slice(0, 1)}</strong>
+                <span>CUSTOM DEITY</span>
+              </div>
+            )}
           </div>
           <div className="card-grain" />
           <footer>
@@ -311,7 +469,11 @@ function AdvisorCard({
               <span>{advisor.epithet}</span>
             </div>
           </footer>
-          <div className="card-disclaimer">AI 模拟启示</div>
+          <div className="card-disclaimer">
+            {advisor.kind === "custom_deity"
+              ? "CUSTOM DEITY · AI SIMULATION"
+              : "AI 模拟启示"}
+          </div>
         </div>
       </div>
       {dissolving && (
@@ -342,8 +504,14 @@ export function QiuzhitaiApp() {
   const [authenticated, setAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [question, setQuestion] = useState("");
+  const [selectionMode, setSelectionMode] = useState<"random" | "manual">(
+    "random",
+  );
   const [count, setCount] = useState(4);
   const [selectedAdvisorIds, setSelectedAdvisorIds] = useState<string[]>([]);
+  const [deities, setDeities] = useState<CustomDeity[]>([]);
+  const [forgeOpen, setForgeOpen] = useState(false);
+  const [editingDeity, setEditingDeity] = useState<CustomDeity | null>(null);
   const [pack, setPack] = useState<Pack | null>(null);
   const [history, setHistory] = useState<Pack[]>([]);
   const [historyCursor, setHistoryCursor] = useState<number | null>(null);
@@ -363,6 +531,7 @@ export function QiuzhitaiApp() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [soundOn, setSoundOn] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [notice, setNotice] = useState("");
   const [burningPackId, setBurningPackId] = useState<string | null>(null);
   const [dissolvingAdvisorId, setDissolvingAdvisorId] = useState<string | null>(
@@ -439,6 +608,13 @@ export function QiuzhitaiApp() {
     [],
   );
 
+  const loadDeities = useCallback(async () => {
+    const response = await fetch("/api/deities");
+    if (!response.ok) return;
+    const data = (await response.json()) as { items: CustomDeity[] };
+    setDeities(data.items);
+  }, []);
+
   const checkSession = useCallback(async () => {
     const response = await fetch("/api/auth/get-session");
     const data = await response.json().catch(() => null);
@@ -446,8 +622,8 @@ export function QiuzhitaiApp() {
     setAuthenticated(ok);
     setUsername(data?.user?.username || data?.user?.name || "");
     setBooting(false);
-    if (ok) await loadHistory(false);
-  }, [loadHistory]);
+    if (ok) await Promise.all([loadHistory(false), loadDeities()]);
+  }, [loadDeities, loadHistory]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void checkSession(), 0);
@@ -490,6 +666,15 @@ export function QiuzhitaiApp() {
     };
   }, []);
 
+  useEffect(() => {
+    const syncFullscreenState = () =>
+      setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    syncFullscreenState();
+    return () =>
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+  }, []);
+
   useLayoutEffect(() => {
     const origins = compactionOrigins.current;
     const rail = cardRailRef.current;
@@ -518,6 +703,7 @@ export function QiuzhitaiApp() {
       () =>
         compactingCards.forEach((card) => {
           card.classList.remove("compacting-card");
+          card.classList.add("settled-card");
           card.style.removeProperty("--card-compaction-x");
         }),
       900,
@@ -691,6 +877,11 @@ export function QiuzhitaiApp() {
   async function consult(event: FormEvent) {
     event.preventDefault();
     if (working) return;
+    if (selectionMode === "manual" && selectedAdvisorIds.length === 0) {
+      setError("尚未指定任何封印。");
+      setIngestingQuestion(false);
+      return;
+    }
     setError("");
     setNotice("");
     setWorking(true);
@@ -707,9 +898,10 @@ export function QiuzhitaiApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
+          selectionMode,
           count,
-          ...(selectedAdvisorIds.length > 0
-            ? { advisorIds: selectedAdvisorIds }
+          ...(selectionMode === "manual"
+            ? { selectedIds: selectedAdvisorIds }
             : {}),
         }),
       });
@@ -762,7 +954,18 @@ export function QiuzhitaiApp() {
   }
 
   function beginQuestionIngestion(form: HTMLFormElement | null) {
-    if (!form || !question.trim() || working || ingestingQuestion) return;
+    if (
+      !form ||
+      !question.trim() ||
+      working ||
+      ingestingQuestion ||
+      (selectionMode === "manual" && selectedAdvisorIds.length === 0)
+    ) {
+      if (selectionMode === "manual" && selectedAdvisorIds.length === 0) {
+        setError("尚未指定任何封印。");
+      }
+      return;
+    }
     cancelQuestionHold();
     setIngestingQuestion(true);
     const reducedMotion = window.matchMedia(
@@ -800,7 +1003,12 @@ export function QiuzhitaiApp() {
     setPack(data);
     setQuestion(data.question);
     setCount(data.requestedCardCount);
-    setSelectedAdvisorIds([]);
+    setSelectionMode(data.selectionMode || "random");
+    setSelectedAdvisorIds(
+      data.selectionMode === "manual"
+        ? data.advisors.map((advisor) => advisor.id)
+        : [],
+    );
     setDecision(data.decision);
     setTexts(cardTexts);
     setStates(
@@ -827,9 +1035,10 @@ export function QiuzhitaiApp() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        selectionMode,
         count,
-        ...(selectedAdvisorIds.length > 0
-          ? { advisorIds: selectedAdvisorIds }
+        ...(selectionMode === "manual"
+          ? { selectedIds: selectedAdvisorIds }
           : {}),
       }),
     });
@@ -860,14 +1069,80 @@ export function QiuzhitaiApp() {
 
   function selectRandomCount(nextCount: number) {
     setCount(nextCount);
-    setSelectedAdvisorIds([]);
   }
 
   function toggleAdvisorChoice(advisorId: string) {
+    setSelectedAdvisorIds((current) => {
+      if (current.includes(advisorId)) {
+        return current.filter((id) => id !== advisorId);
+      }
+      if (current.length >= 8) {
+        setNotice("八枚封印已经就位。若要更换，请先撤下一枚。");
+        return current;
+      }
+      return [...current, advisorId];
+    });
+  }
+
+  async function toggleDeityRandom(deity: CustomDeity) {
+    const response = await fetch(`/api/deities/${deity.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ randomEnabled: !deity.randomEnabled }),
+    });
+    if (!response.ok) return;
+    const updated = (await response.json()) as CustomDeity;
+    setDeities((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    setNotice(
+      updated.randomEnabled
+        ? `「${updated.name}」已进入引力场。`
+        : `「${updated.name}」已暂离引力场，仍可在指定显影中选择。`,
+    );
+  }
+
+  async function silenceDeity(deity: CustomDeity) {
+    if (
+      !window.confirm(
+        `让「${deity.name}」从未来的神谕中沉寂？已经降下的神谕与续示仍会被保留。`,
+      )
+    ) {
+      return;
+    }
+    const response = await fetch(`/api/deities/${deity.id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) return;
+    setDeities((current) => current.filter((item) => item.id !== deity.id));
     setSelectedAdvisorIds((current) =>
-      current.includes(advisorId)
-        ? current.filter((id) => id !== advisorId)
-        : [...current, advisorId],
+      current.filter((id) => id !== deity.id),
+    );
+    setNotice(`「${deity.name}」已经沉寂。旧有神谕仍被保留。`);
+  }
+
+  function handleDeitySaved(deity: CustomDeity, created: boolean) {
+    setDeities((current) => {
+      const exists = current.some((item) => item.id === deity.id);
+      return exists
+        ? current.map((item) => (item.id === deity.id ? deity : item))
+        : [deity, ...current];
+    });
+    if (
+      created &&
+      selectionMode === "manual" &&
+      selectedAdvisorIds.length < 8
+    ) {
+      setSelectedAdvisorIds((current) => [...current, deity.id]);
+    }
+    setForgeOpen(false);
+    setEditingDeity(null);
+    setNotice(
+      created
+        ? deity.randomEnabled
+          ? `「${deity.name}」已经显形，并进入引力场。`
+          : `「${deity.name}」已经显形，暂不参与引力抽取。`
+        : "新的神格已经封存，将从下一次显影开始生效。",
     );
   }
 
@@ -1089,12 +1364,18 @@ export function QiuzhitaiApp() {
   }
 
   async function logout() {
-    await fetch("/api/auth/sign-out", { method: "POST" });
+    await fetch("/api/auth/sign-out", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
     musicRef.current?.pause();
     if (musicRef.current) musicRef.current.currentTime = 0;
     setSoundOn(false);
     setAuthenticated(false);
     setPack(null);
+    setDeities([]);
+    setForgeOpen(false);
   }
 
   async function deleteAccount() {
@@ -1117,6 +1398,8 @@ export function QiuzhitaiApp() {
     setSoundOn(false);
     setAuthenticated(false);
     setPack(null);
+    setDeities([]);
+    setForgeOpen(false);
   }
 
   async function toggleSound() {
@@ -1136,6 +1419,24 @@ export function QiuzhitaiApp() {
     } catch {
       setSoundOn(false);
       setNotice("请再次点击音符开启音乐");
+    }
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (!document.documentElement.requestFullscreen) {
+        setNotice("当前浏览器不支持网页全屏");
+        return;
+      }
+      await document.documentElement.requestFullscreen({
+        navigationUI: "hide",
+      });
+    } catch {
+      setNotice("浏览器未允许进入全屏，请再次点击");
     }
   }
 
@@ -1211,6 +1512,13 @@ export function QiuzhitaiApp() {
           <span className="welcome">晚上好，{username}</span>
           <Icon label={soundOn ? "关闭声音" : "开启声音"} onClick={toggleSound} active={soundOn}>
             {soundOn ? "♫" : "♩"}
+          </Icon>
+          <Icon
+            label={fullscreen ? "退出网页全屏" : "进入网页全屏"}
+            onClick={toggleFullscreen}
+            active={fullscreen}
+          >
+            {fullscreen ? "⊡" : "⛶"}
           </Icon>
           <Icon label="历史卡牌包" onClick={() => setHistoryOpen(true)}>
             ◫
@@ -1298,7 +1606,13 @@ export function QiuzhitaiApp() {
             )}
             <button
               className="event-horizon-trigger"
-              disabled={!question.trim() || working || ingestingQuestion}
+              disabled={
+                !question.trim() ||
+                working ||
+                ingestingQuestion ||
+                (selectionMode === "manual" &&
+                  selectedAdvisorIds.length === 0)
+              }
               type="button"
               aria-label="长按使问题越过边界"
               onPointerDown={beginQuestionHold}
@@ -1339,10 +1653,25 @@ export function QiuzhitaiApp() {
             {controlsOpen && (
               <aside className="control-popover">
                 <PerspectivePicker
+                  mode={selectionMode}
                   count={count}
                   selectedAdvisorIds={selectedAdvisorIds}
+                  deities={deities}
+                  onModeChange={setSelectionMode}
                   onCountSelect={selectRandomCount}
                   onAdvisorToggle={toggleAdvisorChoice}
+                  onForge={() => {
+                    setEditingDeity(null);
+                    setForgeOpen(true);
+                  }}
+                  onEditDeity={(deity) => {
+                    setEditingDeity(deity);
+                    setForgeOpen(true);
+                  }}
+                  onToggleDeityRandom={(deity) =>
+                    void toggleDeityRandom(deity)
+                  }
+                  onDeleteDeity={(deity) => void silenceDeity(deity)}
                 />
               </aside>
             )}
@@ -1377,13 +1706,36 @@ export function QiuzhitaiApp() {
               {controlsOpen && (
                 <aside className="control-popover">
                   <PerspectivePicker
+                    mode={selectionMode}
                     count={count}
                     selectedAdvisorIds={selectedAdvisorIds}
+                    deities={deities}
+                    onModeChange={setSelectionMode}
                     onCountSelect={selectRandomCount}
                     onAdvisorToggle={toggleAdvisorChoice}
+                    onForge={() => {
+                      setEditingDeity(null);
+                      setForgeOpen(true);
+                    }}
+                    onEditDeity={(deity) => {
+                      setEditingDeity(deity);
+                      setForgeOpen(true);
+                    }}
+                    onToggleDeityRandom={(deity) =>
+                      void toggleDeityRandom(deity)
+                    }
+                    onDeleteDeity={(deity) => void silenceDeity(deity)}
                   />
-                  <button type="button" className="reroll-button" onClick={reroll}>
-                    重抽
+                  <button
+                    type="button"
+                    className="reroll-button"
+                    onClick={reroll}
+                    disabled={
+                      selectionMode === "manual" &&
+                      selectedAdvisorIds.length === 0
+                    }
+                  >
+                    {selectionMode === "random" ? "重新抽取" : "重新显影"}
                   </button>
                   <button type="button" className="new-question-button" onClick={beginNewQuestion}>
                     新问
@@ -1437,13 +1789,25 @@ export function QiuzhitaiApp() {
             aria-label={`进入 ${featuredAdvisor.name} 的神谕`}
             onClick={() => void selectAdvisor(featuredAdvisor)}
           >
-            <Image
-              src={featuredAdvisor.image}
-              alt=""
-              fill
-              sizes="390px"
-              priority
-            />
+            {featuredAdvisor.image ? (
+              featuredAdvisor.kind === "custom_deity" ? (
+                <img src={featuredAdvisor.image} alt="" />
+              ) : (
+                <Image
+                  src={featuredAdvisor.image}
+                  alt=""
+                  fill
+                  sizes="390px"
+                  priority
+                />
+              )
+            ) : (
+              <div className="custom-deity-sigil featured" aria-hidden="true">
+                <i />
+                <strong>{featuredAdvisor.name.slice(0, 1)}</strong>
+                <span>CUSTOM DEITY</span>
+              </div>
+            )}
             <span className="featured-card-vignette" aria-hidden="true" />
             <span className="featured-card-identity">
               <strong>
@@ -1467,7 +1831,10 @@ export function QiuzhitaiApp() {
           data-advisor-id={selected.id}
           style={
             {
-              "--oracle-identity-image": `url("${selected.image}")`,
+              ...(selected.image
+                ? { "--oracle-identity-image": `url("${selected.image}")` }
+                : {}),
+              "--oracle-accent": selected.accent,
             } as CSSProperties
           }
           onMouseDown={(event) => event.stopPropagation()}
@@ -1486,9 +1853,18 @@ export function QiuzhitaiApp() {
               {selected.name.slice(0, 1)}
             </div>
             <div>
-              <p className="eyebrow">THE ORACLE · {String(pack.advisors.findIndex((advisor) => advisor.id === selected.id) + 1).padStart(2, "0")}</p>
+              <p className="eyebrow">
+                {selected.kind === "custom_deity"
+                  ? "THE FORGED ORACLE"
+                  : "THE ORACLE"}{" "}
+                · {String(pack.advisors.findIndex((advisor) => advisor.id === selected.id) + 1).padStart(2, "0")}
+              </p>
               <h2>来自 {selected.name} 的神谕</h2>
-              <span>{selected.epithet} · 基于公开思想的 AI 演绎</span>
+              <span>
+                {selected.kind === "custom_deity"
+                  ? "自定义神明 · 基于封存神格的 AI 演绎"
+                  : `${selected.epithet} · 基于公开思想的 AI 演绎`}
+              </span>
             </div>
           </header>
           <div className="oracle-scripture">
@@ -1657,6 +2033,21 @@ export function QiuzhitaiApp() {
         )}
         </div>
       )}
+
+      <DeityForge
+        key={
+          forgeOpen
+            ? `${editingDeity?.id || "new"}-${editingDeity?.updatedAt || 0}`
+            : "closed"
+        }
+        open={forgeOpen}
+        deity={editingDeity}
+        onClose={() => {
+          setForgeOpen(false);
+          setEditingDeity(null);
+        }}
+        onSaved={handleDeitySaved}
+      />
 
       {notice && (
         <button className="toast" onClick={() => setNotice("")} type="button">
