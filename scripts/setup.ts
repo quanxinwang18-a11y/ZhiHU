@@ -3,4 +3,4 @@ import { ensureAuthReady } from "../lib/auth";
 
 ensureBusinessSchema();
 await ensureAuthReady();
-console.log("求知台本地数据库已就绪：data/qiuzhitai.db");
+console.log("职乎本地数据库已就绪：data/qiuzhitai.db");

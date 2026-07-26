@@ -21,7 +21,27 @@ export const advisors: Advisor[] = [
 
 export const advisorMap = new Map(advisors.map((advisor) => [advisor.id, advisor]));
 
-export function pickAdvisors(count = 4) {
+export function isValidAdvisorSelection(
+  value: unknown,
+): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= advisors.length &&
+    value.every(
+      (id): id is string => typeof id === "string" && advisorMap.has(id),
+    ) &&
+    new Set(value).size === value.length
+  );
+}
+
+export function pickAdvisors(count = 4, advisorIds?: string[]) {
+  if (advisorIds?.length) {
+    return advisorIds.flatMap((id) => {
+      const advisor = advisorMap.get(id);
+      return advisor ? [advisor] : [];
+    });
+  }
   return [...advisors]
     .sort(() => Math.random() - 0.5)
     .slice(0, Math.max(1, Math.min(8, count)));

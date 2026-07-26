@@ -79,7 +79,7 @@ export async function POST(
     !mockMode &&
     (!process.env.XFYUN_API_KEY || !process.env.XFYUN_MODEL_ID)
   ) {
-    console.error("[求知台] 真实模型配置不完整", {
+    console.error("[职乎] 真实模型配置不完整", {
       requestId,
       userId: authResult.user.id,
       errorType: "MissingModelConfiguration",
@@ -97,7 +97,7 @@ export async function POST(
     return Response.json({ error: "受控单卡失败" }, { status: 503 });
   }
 
-  console.log("[求知台] AI 请求开始", {
+  console.log("[职乎] AI 请求开始", {
     requestId,
     userId: authResult.user.id,
     advisorId: advisor.id,
@@ -110,7 +110,7 @@ export async function POST(
     } else {
       completeCard(card.id, content);
     }
-    console.log("[求知台] AI 请求完成", {
+    console.log("[职乎] AI 请求完成", {
       requestId,
       userId: authResult.user.id,
       advisorId: advisor.id,
@@ -136,7 +136,7 @@ export async function POST(
       history,
       onFinish: finish,
       onError: (error) =>
-        console.error("[求知台] AI 请求失败", {
+        console.error("[职乎] AI 请求失败", {
           requestId,
           userId: authResult.user.id,
           advisorId: advisor.id,

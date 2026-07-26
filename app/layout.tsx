@@ -6,7 +6,7 @@ import "@fontsource/noto-serif-sc/600.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "求知台｜让分歧照见选择",
+  title: "职乎｜让分歧照见选择",
   description: "把同一个职场问题交给立场不同的顾问。听见分歧，自己决定。",
   icons: { icon: "/favicon.svg" },
 };

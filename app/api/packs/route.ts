@@ -4,6 +4,7 @@ import {
   PackRow,
   serializePack,
 } from "@/lib/packs";
+import { isValidAdvisorSelection } from "@/lib/advisors";
 import { requireUser } from "@/lib/session";
 import { validateQuestion } from "@/lib/validation";
 
@@ -34,14 +35,32 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const authResult = await requireUser(request);
   if (authResult.error) return authResult.error;
-  const body = (await request.json()) as { question?: string; count?: number };
+  const body = (await request.json()) as {
+    question?: string;
+    count?: number;
+    advisorIds?: unknown;
+  };
   const checked = validateQuestion(body.question || "");
   if (!checked.ok) {
     return Response.json({ error: checked.error }, { status: 400 });
   }
-  const count = Math.max(1, Math.min(8, Math.floor(body.count ?? 4)));
+  if (
+    body.advisorIds !== undefined &&
+    !isValidAdvisorSelection(body.advisorIds)
+  ) {
+    return Response.json({ error: "限定视角无效" }, { status: 400 });
+  }
+  const advisorIds = body.advisorIds;
+  const count = advisorIds
+    ? advisorIds.length
+    : Math.max(1, Math.min(8, Math.floor(body.count ?? 4)));
   try {
-    const pack = createPack(authResult.user.id, checked.question, count);
+    const pack = createPack(
+      authResult.user.id,
+      checked.question,
+      count,
+      advisorIds,
+    );
     return Response.json(serializePack(pack, true), { status: 201 });
   } catch (error) {
     if (error instanceof Error && /UNIQUE constraint failed/.test(error.message)) {
@@ -50,7 +69,7 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
-    console.error("[求知台] 创建卡牌包失败", {
+    console.error("[职乎] 创建卡牌包失败", {
       requestId: crypto.randomUUID(),
       userId: authResult.user.id,
       errorType: error instanceof Error ? error.name : "UnknownError",

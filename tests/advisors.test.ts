@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { advisors, pickAdvisors } from "@/lib/advisors";
+import {
+  advisors,
+  isValidAdvisorSelection,
+  pickAdvisors,
+} from "@/lib/advisors";
 import { makeMockOpinion } from "@/lib/mock-ai";
 
 describe("首批顾问与 Mock 意见", () => {
@@ -16,6 +20,17 @@ describe("首批顾问与 Mock 意见", () => {
     const selected = pickAdvisors();
     expect(selected).toHaveLength(4);
     expect(new Set(selected.map((advisor) => advisor.id)).size).toBe(4);
+  });
+
+  it("限定视角保持用户选择顺序并拒绝无效组合", () => {
+    const advisorIds = ["bytedance", "steve-jobs", "zhang-yiming"];
+    expect(pickAdvisors(8, advisorIds).map((advisor) => advisor.id)).toEqual(
+      advisorIds,
+    );
+    expect(isValidAdvisorSelection(advisorIds)).toBe(true);
+    expect(isValidAdvisorSelection(["bytedance", "bytedance"])).toBe(false);
+    expect(isValidAdvisorSelection(["unknown"])).toBe(false);
+    expect(isValidAdvisorSelection([])).toBe(false);
   });
 
   it("不同顾问保持非结构化且可辨识的表达", () => {

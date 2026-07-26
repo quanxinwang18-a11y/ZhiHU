@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return Response.json({ error: result.error }, { status: result.status });
   }
   console.log(
-    `\n[求知台验证码] 用户 ${normalized}：${result.code}（5 分钟内有效）\n`,
+    `\n[职乎验证码] 用户 ${normalized}：${result.code}（5 分钟内有效）\n`,
   );
   return Response.json({
     ok: true,

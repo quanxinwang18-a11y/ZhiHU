@@ -39,7 +39,6 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "three": "^0.185.1",
-    "tone": "^15.1.22",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

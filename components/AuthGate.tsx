@@ -66,9 +66,9 @@ export function AuthGate({ onAuthenticated }: Props) {
         energy={Math.min(1, (username.length + password.length) / 24)}
       />
       <section className="auth-panel">
-        <div className="brand-seal">知</div>
+        <div className="brand-seal">职</div>
         <p className="eyebrow">THE ORACLE OF DISSENT</p>
-        <h1>求知台</h1>
+        <h1>职乎</h1>
         <p className="auth-lead">听见分歧，照见选择。</p>
         <div className="auth-tabs" role="tablist">
           <button
@@ -128,7 +128,7 @@ export function AuthGate({ onAuthenticated }: Props) {
             <p className="form-note">验证码已打印在运行本项目的后端控制台。</p>
           )}
           <button className="primary-button" disabled={busy} type="submit">
-            <span>{busy ? "正在校验…" : mode === "login" ? "进入求知台" : "完成注册"}</span>
+            <span>{busy ? "正在校验…" : mode === "login" ? "进入" : "完成注册"}</span>
           </button>
         </form>
         <p className="simulation-note">所有顾问观点均为 AI 模拟，不代表本人或组织发言</p>

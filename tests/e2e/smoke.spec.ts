@@ -9,7 +9,7 @@ const boundaryUsername = `边界${runId}`;
 
 async function register(page: Page, username: string) {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "求知台" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "职乎" })).toBeVisible();
   const atmosphere = page.locator(".oracle-atmosphere canvas");
   await expect(atmosphere).toBeVisible();
   expect(
@@ -93,6 +93,9 @@ async function createQuestion(page: Page, question: string) {
 test("注册、登录、四卡、停止追问、决定、历史与账号闭环", async ({ page }) => {
   test.setTimeout(90_000);
   await register(page, primaryUsername);
+  await expect(
+    page.locator(".question-stage h1 .floating-glyph").first(),
+  ).toBeVisible();
   const sessionCookie = (await page.context().cookies()).find((cookie) =>
     cookie.name.includes("session_token"),
   );
@@ -104,10 +107,10 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.getByRole("button", { name: "关闭声音" })).toBeVisible();
 
   await page.getByRole("button", { name: "退出登录" }).click();
-  await expect(page.getByRole("button", { name: "进入求知台" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "进入", exact: true })).toBeVisible();
   await page.getByLabel("用户名", { exact: true }).fill(primaryUsername);
   await page.getByLabel("密码", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "进入求知台" }).click();
+  await page.getByRole("button", { name: "进入", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "把你的困惑，交给不同的人生" }),
   ).toBeVisible();
@@ -123,9 +126,11 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.getByTestId("oracle-card").first()).toBeInViewport({
     ratio: 0.5,
   });
-  await expect(page.getByText("所问之事的回声", { exact: true })).toBeVisible();
+  await expect(page.locator(".question-frozen blockquote")).toBeVisible();
 
   const cards = page.getByTestId("oracle-card");
+  const destroyedAdvisorId = await cards.first().getAttribute("data-advisor-id");
+  if (!destroyedAdvisorId) throw new Error("首张卡牌缺少顾问标识");
   const fourCardSize = await cards.first().evaluate((element) => {
     const bounds = element.getBoundingClientRect();
     return { width: bounds.width, height: bounds.height, top: bounds.top };
@@ -147,9 +152,15 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   );
   const featuredCard = page.getByTestId("featured-oracle-card");
   await expect(featuredCard).toBeVisible();
+  await expect(
+    featuredCard.locator(".featured-card-identity .floating-glyph").first(),
+  ).toBeVisible();
   await expect(page.getByText(/THE ORACLE · 01/)).toBeHidden();
   await featuredCard.click();
   await expect(page.getByText(/THE ORACLE · 01/)).toBeVisible();
+  await expect(
+    page.locator(".oracle-verdict .floating-glyph").first(),
+  ).toBeVisible();
   await expect(page.locator(".oracle-identity-echo")).toHaveCount(0);
   await expect(page.locator(".reading-room")).toHaveCSS("border-top-width", "0px");
   await page.keyboard.press("Escape");
@@ -163,7 +174,7 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await page.getByRole("button", { name: "截断并保留" }).click();
   await expect(page.getByText("回答已停止", { exact: true })).toBeVisible();
 
-  const decision = page.getByPlaceholder("神谕止于此，你的判断从这里开始。");
+  const decision = page.locator(".decision-area textarea");
   await decision.fill("先书面确认三十天目标，再依据真实反馈决定。");
   await page.getByRole("heading", { name: "写下你的判词" }).click();
   await expect(page.getByText("你的决定已自动收入卡牌包。")).toBeVisible();
@@ -198,9 +209,23 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(page.locator(".reading-room")).toHaveClass(
     /shattering-manuscript/,
   );
-  await expect(page.getByTestId("oracle-card")).toHaveCount(3, {
-    timeout: 5_000,
+  const dissolvingCard = page.locator(
+    `[data-testid="oracle-card"][data-advisor-id="${destroyedAdvisorId}"]`,
+  );
+  await expect(dissolvingCard).toHaveClass(/dissolving-card/, {
+    timeout: 6_000,
   });
+  await expect(dissolvingCard.locator(".card-particle-wind span")).toHaveCount(
+    144,
+  );
+  await expect(page.getByTestId("oracle-card")).toHaveCount(3, {
+    timeout: 8_000,
+  });
+  await expect(page.locator(".oracle-card.compacting-card")).toHaveCount(3);
+  await expect(page.locator(".oracle-card.compacting-card").first()).toHaveCSS(
+    "animation-name",
+    "cardRailCompact",
+  );
   const threeCardSize = await cards.first().evaluate((element) => {
     const bounds = element.getBoundingClientRect();
     return { width: bounds.width, height: bounds.height, top: bounds.top };
@@ -234,14 +259,29 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await page.getByRole("button", { name: "历史卡牌包" }).click();
   page.once("dialog", (dialog) => dialog.accept(password));
   await page.getByRole("button", { name: "注销本地账号" }).click();
-  await expect(page.getByRole("button", { name: "进入求知台" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "进入", exact: true })).toBeVisible();
 });
 
 test("支持八卡并行、受控单卡失败移除和一张重抽", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await register(page, boundaryUsername);
-  await page.getByRole("button", { name: "设置抽取数量" }).click();
-  await page.getByRole("button", { name: "抽取 8 张" }).click();
+  await page.getByRole("button", { name: "设置抽取方式" }).click();
+  await page.getByRole("button", { name: "选择 阿里 视角" }).click();
+  await page.getByRole("button", { name: "选择 字节 视角" }).click();
+  await expect(page.locator(".selection-mode")).toContainText("限定 · 2");
+  await page.getByRole("button", { name: "设置抽取方式" }).click();
+  await createQuestion(
+    page,
+    "这是用于验证指定阿里和字节两个组织视角的完整职场问题。",
+  );
+  await expect(page.getByTestId("oracle-card")).toHaveCount(2);
+  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="alibaba"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="bytedance"]')).toHaveCount(1);
+
+  await page.getByRole("button", { name: "提出一个新问题" }).click();
+  await page.getByRole("button", { name: "设置抽取方式" }).click();
+  await page.getByRole("button", { name: "随机抽取 8 张" }).click();
   await createQuestion(
     page,
     "这是用于验证八张卡并行与单卡失败移除的完整职场问题。[FAIL:zhang-yiming]",
@@ -253,14 +293,24 @@ test("支持八卡并行、受控单卡失败移除和一张重抽", async ({ pa
   await expect(page.locator('[data-advisor-id="zhang-yiming"]')).toHaveCount(0);
 
   await page.getByRole("button", { name: "显示其他选择" }).click();
-  await page.getByRole("button", { name: "抽取 1 张" }).click();
-  await page.getByRole("button", { name: "重新抽取并覆盖当前卡牌包" }).click();
+  await page.getByRole("button", { name: "随机抽取 1 张" }).click();
+  await page.getByRole("button", { name: "重抽", exact: true }).click();
   await expect(page.locator('[data-testid="oracle-card"][data-state="ready"]')).toHaveCount(1, {
     timeout: 15_000,
   });
 
+  await page.getByRole("button", { name: "显示其他选择" }).click();
+  await page.getByRole("button", { name: "选择 乔布斯 视角" }).click();
+  await page.getByRole("button", { name: "选择 塔勒布 视角" }).click();
+  await page.getByRole("button", { name: "重抽", exact: true }).click();
+  await expect(page.locator('[data-testid="oracle-card"][data-state="ready"]')).toHaveCount(2, {
+    timeout: 15_000,
+  });
+  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="steve-jobs"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="nassim-taleb"]')).toHaveCount(1);
+
   await page.getByRole("button", { name: "历史卡牌包" }).click();
   page.once("dialog", (dialog) => dialog.accept(password));
   await page.getByRole("button", { name: "注销本地账号" }).click();
-  await expect(page.getByRole("button", { name: "进入求知台" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "进入", exact: true })).toBeVisible();
 });

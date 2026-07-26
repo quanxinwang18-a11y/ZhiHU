@@ -132,9 +132,14 @@ export function getOwnedCard(id: string, userId: string) {
     .get(id, userId) as CardRow | undefined;
 }
 
-export function createPack(userId: string, question: string, count: number) {
+export function createPack(
+  userId: string,
+  question: string,
+  count: number,
+  advisorIds?: string[],
+) {
   cleanupStaleGeneration(userId);
-  const selected = pickAdvisors(count);
+  const selected = pickAdvisors(count, advisorIds);
   const now = Date.now();
   const id = randomUUID();
   const visualSpectrum = spectrumFromSeed(id);
@@ -151,7 +156,7 @@ export function createPack(userId: string, question: string, count: number) {
         question.replace(/\s+/g, " ").slice(0, 20),
         question,
         visualSpectrum,
-        count,
+        selected.length,
         now,
         now,
       );
@@ -168,8 +173,12 @@ export function createPack(userId: string, question: string, count: number) {
   return getOwnedPack(id, userId)!;
 }
 
-export function redrawPack(pack: PackRow, count: number) {
-  const selected = pickAdvisors(count);
+export function redrawPack(
+  pack: PackRow,
+  count: number,
+  advisorIds?: string[],
+) {
+  const selected = pickAdvisors(count, advisorIds);
   const now = Date.now();
   database.transaction(() => {
     database.prepare("DELETE FROM cards WHERE card_pack_id = ?").run(pack.id);
@@ -180,7 +189,7 @@ export function redrawPack(pack: PackRow, count: number) {
              selected_card_id = NULL, decision = '', updated_at = ?
          WHERE id = ?`,
       )
-      .run(count, now, pack.id);
+      .run(selected.length, now, pack.id);
     const insert = database.prepare(
       `INSERT INTO cards
        (id, card_pack_id, advisor_id, status, initial_opinion, settled_order, started_at, completed_at)

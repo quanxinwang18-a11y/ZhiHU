@@ -56,6 +56,36 @@ describe("卡牌包事务与会话隔离", () => {
     }
   });
 
+  it("可按指定人物建立和重抽限定视角", () => {
+    const firstSelection = ["bytedance", "steve-jobs"];
+    const pack = createPack(
+      "limited-user",
+      "这是一个需要指定人物提供意见的职场测试问题",
+      8,
+      firstSelection,
+    );
+    const created = serializePack(pack);
+    expect(created.requestedCardCount).toBe(2);
+    expect(new Set(created.advisors.map((advisor) => advisor!.id))).toEqual(
+      new Set(firstSelection),
+    );
+
+    const nextSelection = ["alibaba", "charlie-munger", "nassim-taleb"];
+    redrawPack(
+      getOwnedPack(pack.id, "limited-user")!,
+      8,
+      nextSelection,
+    );
+    const redrawn = serializePack(
+      getOwnedPack(pack.id, "limited-user")!,
+      true,
+    );
+    expect(redrawn.requestedCardCount).toBe(3);
+    expect(new Set(redrawn.advisors.map((advisor) => advisor!.id))).toEqual(
+      new Set(nextSelection),
+    );
+  });
+
   it("按完成速度原子分配落位顺序", () => {
     const pack = createPack("user-a", "领导让我突然调动到陌生业务方向怎么办", 3);
     const cards = serializePack(pack).cards;

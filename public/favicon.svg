@@ -2,5 +2,5 @@
   <rect width="64" height="64" rx="32" fill="#070706"/>
   <circle cx="32" cy="32" r="27" fill="none" stroke="#bd9651"/>
   <circle cx="32" cy="32" r="20" fill="none" stroke="#bd9651" stroke-opacity=".35"/>
-  <text x="32" y="40" text-anchor="middle" font-size="25" fill="#eee8dc" font-family="serif">知</text>
+  <text x="32" y="40" text-anchor="middle" font-size="25" fill="#eee8dc" font-family="serif">职</text>
 </svg>

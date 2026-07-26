@@ -12,12 +12,14 @@ import {
   PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { startSound, stopSound } from "@/lib/sound";
+import { FloatingText } from "@/components/FloatingText";
+import { advisors as advisorCatalog } from "@/lib/advisors";
 import {
   normalizeSpectrumId,
   SPECTRA,
@@ -98,7 +100,9 @@ function OracleRevelation({
         aria-label="核心判词"
       >
         <small>THE VERDICT · 判词</small>
-        <p>{reading.verdict}</p>
+        <p>
+          <FloatingText text={reading.verdict} mode="verdict" />
+        </p>
       </blockquote>
       {reading.exegesis.length > 0 && (
         <div className="oracle-exegesis">
@@ -142,12 +146,83 @@ function Icon({
   );
 }
 
+function PerspectivePicker({
+  count,
+  selectedAdvisorIds,
+  onCountSelect,
+  onAdvisorToggle,
+}: {
+  count: number;
+  selectedAdvisorIds: string[];
+  onCountSelect: (count: number) => void;
+  onAdvisorToggle: (advisorId: string) => void;
+}) {
+  const limited = selectedAdvisorIds.length > 0;
+
+  return (
+    <div className="perspective-picker">
+      <div className="selection-mode" aria-live="polite">
+        <span className={!limited ? "active" : ""}>随机 · {count}</span>
+        <i />
+        <span className={limited ? "active" : ""}>
+          限定{limited ? ` · ${selectedAdvisorIds.length}` : ""}
+        </span>
+      </div>
+      <div className={`number-grid ${limited ? "inactive" : ""}`}>
+        {Array.from({ length: 8 }, (_, index) => index + 1).map((number) => (
+          <button
+            type="button"
+            aria-label={`随机抽取 ${number} 张`}
+            className={!limited && count === number ? "active" : ""}
+            onClick={() => onCountSelect(number)}
+            key={number}
+          >
+            {number}
+          </button>
+        ))}
+      </div>
+      <div className="advisor-orb-grid">
+        {advisorCatalog.map((advisor) => {
+          const active = selectedAdvisorIds.includes(advisor.id);
+          return (
+            <button
+              type="button"
+              className={active ? "active" : ""}
+              aria-label={`${active ? "移除" : "选择"} ${advisor.name} 视角`}
+              aria-pressed={active}
+              data-advisor-id={advisor.id}
+              onClick={() => onAdvisorToggle(advisor.id)}
+              style={
+                {
+                  "--advisor-orb-accent": advisor.accent,
+                } as CSSProperties
+              }
+              key={advisor.id}
+            >
+              <span className="advisor-orb">
+                <Image
+                  src={advisor.image}
+                  alt=""
+                  fill
+                  sizes="52px"
+                />
+              </span>
+              <small>{advisor.name}</small>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AdvisorCard({
   advisor,
   state,
   revealed,
   selected,
   entering,
+  dissolving,
   onClick,
   index,
 }: {
@@ -156,11 +231,14 @@ function AdvisorCard({
   revealed: boolean;
   selected: boolean;
   entering: boolean;
+  dissolving: boolean;
   onClick: () => void;
   index: number;
 }) {
-  const canReveal = state === "ready";
-  const actionLabel = !canReveal
+  const canReveal = state === "ready" && !dissolving;
+  const actionLabel = dissolving
+    ? `${advisor.name} 的卡牌正在随风消散`
+    : !canReveal
     ? state === "failed"
       ? "这枚封印未能形成"
       : "神谕正在封存"
@@ -170,7 +248,7 @@ function AdvisorCard({
 
   return (
     <article
-      className={`oracle-card ${state} ${revealed ? "revealed" : "sealed"} ${selected ? "selected" : ""} ${entering ? "entering" : ""}`}
+      className={`oracle-card ${state} ${revealed ? "revealed" : "sealed"} ${selected ? "selected" : ""} ${entering ? "entering" : ""} ${dissolving ? "dissolving-card" : ""}`}
       data-testid="oracle-card"
       data-advisor-id={advisor.id}
       data-card-id={advisor.cardId}
@@ -193,6 +271,7 @@ function AdvisorCard({
       tabIndex={canReveal ? 0 : -1}
       aria-label={actionLabel}
       aria-disabled={!canReveal}
+      aria-busy={dissolving}
     >
       <div className="card-flipper">
         <div className="card-face card-front" aria-hidden={revealed}>
@@ -204,21 +283,13 @@ function AdvisorCard({
               <i />
               <i />
             </div>
-            <strong>
-              {state === "failed" ? "封印未成" : "神谕已经封存"}
-            </strong>
-            <small>
-              {state === "ready"
-                ? "不要猜测来者 · 凭直觉选择"
-                : "不同立场仍在黑洞背面成形"}
-            </small>
+            {state === "failed" && <strong>封印未成</strong>}
           </div>
           <footer>
             <div>
               <strong>无名之牌</strong>
               <span>THE SEALED VOICE</span>
             </div>
-            <em>轻触显影</em>
           </footer>
           <div className="card-disclaimer">SEALED</div>
         </div>
@@ -239,11 +310,29 @@ function AdvisorCard({
               <strong>{advisor.name}</strong>
               <span>{advisor.epithet}</span>
             </div>
-            <em>进入神谕</em>
           </footer>
           <div className="card-disclaimer">AI 模拟启示</div>
         </div>
       </div>
+      {dissolving && (
+        <div className="card-particle-wind" aria-hidden="true">
+          {Array.from({ length: 144 }, (_, particleIndex) => (
+            <span
+              key={particleIndex}
+              style={
+                {
+                  "--card-particle-x": `${2 + ((particleIndex * 31) % 97)}%`,
+                  "--card-particle-y": `${1 + ((particleIndex * 47) % 98)}%`,
+                  "--card-particle-dx": `${90 + (particleIndex % 11) * 19}px`,
+                  "--card-particle-dy": `${-88 + ((particleIndex * 43) % 168)}px`,
+                  "--card-particle-delay": `${(particleIndex % 18) * 0.035}s`,
+                  "--card-particle-size": `${1 + (particleIndex % 6)}px`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </div>
+      )}
     </article>
   );
 }
@@ -254,6 +343,7 @@ export function QiuzhitaiApp() {
   const [username, setUsername] = useState("");
   const [question, setQuestion] = useState("");
   const [count, setCount] = useState(4);
+  const [selectedAdvisorIds, setSelectedAdvisorIds] = useState<string[]>([]);
   const [pack, setPack] = useState<Pack | null>(null);
   const [history, setHistory] = useState<Pack[]>([]);
   const [historyCursor, setHistoryCursor] = useState<number | null>(null);
@@ -275,6 +365,9 @@ export function QiuzhitaiApp() {
   const [soundOn, setSoundOn] = useState(false);
   const [notice, setNotice] = useState("");
   const [burningPackId, setBurningPackId] = useState<string | null>(null);
+  const [dissolvingAdvisorId, setDissolvingAdvisorId] = useState<string | null>(
+    null,
+  );
   const [holdingQuestion, setHoldingQuestion] = useState(false);
   const [ingestingQuestion, setIngestingQuestion] = useState(false);
   const aborters = useRef(new Map<string, AbortController>());
@@ -282,8 +375,12 @@ export function QiuzhitaiApp() {
   const holdTimer = useRef<number | undefined>(undefined);
   const ingestionTimer = useRef<number | undefined>(undefined);
   const oracleEntryTimer = useRef<number | undefined>(undefined);
+  const compactionTimer = useRef<number | undefined>(undefined);
+  const compactionOrigins = useRef<Record<string, number> | null>(null);
   const wasWorking = useRef(false);
   const packStageRef = useRef<HTMLElement>(null);
+  const cardRailRef = useRef<HTMLDivElement>(null);
+  const musicRef = useRef<HTMLAudioElement | null>(null);
 
   const selected = pack?.advisors.find(
     (advisor) => advisor.id === selectedAdvisor,
@@ -302,6 +399,8 @@ export function QiuzhitaiApp() {
     "--spectrum-primary": spectrum.primary,
     "--spectrum-secondary": spectrum.secondary,
     "--spectrum-spark": spectrum.spark,
+    "--line": `color-mix(in srgb, ${spectrum.primary} 17%, transparent)`,
+    "--line-strong": `color-mix(in srgb, ${spectrum.primary} 34%, transparent)`,
   } as CSSProperties;
   const selectedMessages = useMemo(
     () =>
@@ -361,9 +460,69 @@ export function QiuzhitaiApp() {
       if (oracleEntryTimer.current) {
         window.clearTimeout(oracleEntryTimer.current);
       }
+      if (compactionTimer.current) {
+        window.clearTimeout(compactionTimer.current);
+      }
       controllers.forEach((controller) => controller.abort());
     };
   }, [checkSession]);
+
+  useEffect(() => {
+    const music = new Audio("/audio/weve-never-met.mp3");
+    music.preload = "auto";
+    music.loop = false;
+    music.volume = 0.55;
+    musicRef.current = music;
+
+    const handleEnded = () => setSoundOn(false);
+    const handleError = () => {
+      setSoundOn(false);
+      setNotice("音乐载入失败，请稍后重试");
+    };
+    music.addEventListener("ended", handleEnded);
+    music.addEventListener("error", handleError);
+
+    return () => {
+      music.pause();
+      music.removeEventListener("ended", handleEnded);
+      music.removeEventListener("error", handleError);
+      musicRef.current = null;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const origins = compactionOrigins.current;
+    const rail = cardRailRef.current;
+    if (!origins || !rail) return;
+
+    compactionOrigins.current = null;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const compactingCards: HTMLElement[] = [];
+    rail
+      .querySelectorAll<HTMLElement>("[data-testid='oracle-card']")
+      .forEach((card) => {
+        const advisorId = card.dataset.advisorId;
+        if (!advisorId || origins[advisorId] === undefined) return;
+        const offset = origins[advisorId] - card.getBoundingClientRect().left;
+        if (Math.abs(offset) <= 0.5) return;
+        card.style.setProperty("--card-compaction-x", `${offset}px`);
+        card.classList.add("compacting-card");
+        compactingCards.push(card);
+      });
+
+    window.clearTimeout(compactionTimer.current);
+    compactionTimer.current = window.setTimeout(
+      () =>
+        compactingCards.forEach((card) => {
+          card.classList.remove("compacting-card");
+          card.style.removeProperty("--card-compaction-x");
+        }),
+      900,
+    );
+  }, [pack?.advisors]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -535,16 +694,24 @@ export function QiuzhitaiApp() {
     setError("");
     setNotice("");
     setWorking(true);
+    setControlsOpen(false);
     setPack(null);
     setSelectedAdvisor(null);
     setFeaturedAdvisorId(null);
+    setDissolvingAdvisorId(null);
     setRevealedAdvisorIds([]);
     setTexts({});
     try {
       const response = await fetch("/api/packs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, count }),
+        body: JSON.stringify({
+          question,
+          count,
+          ...(selectedAdvisorIds.length > 0
+            ? { advisorIds: selectedAdvisorIds }
+            : {}),
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "未能建立卡牌包");
@@ -626,12 +793,14 @@ export function QiuzhitaiApp() {
     if (!response.ok) return;
     const data = (await response.json()) as Pack;
     setFeaturedAdvisorId(null);
+    setDissolvingAdvisorId(null);
     const cardTexts = Object.fromEntries(
       data.advisors.map((advisor) => [advisor.id, advisor.initialOpinion]),
     );
     setPack(data);
     setQuestion(data.question);
     setCount(data.requestedCardCount);
+    setSelectedAdvisorIds([]);
     setDecision(data.decision);
     setTexts(cardTexts);
     setStates(
@@ -657,7 +826,12 @@ export function QiuzhitaiApp() {
     const response = await fetch(`/api/packs/${pack.id}/reroll`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ count }),
+      body: JSON.stringify({
+        count,
+        ...(selectedAdvisorIds.length > 0
+          ? { advisorIds: selectedAdvisorIds }
+          : {}),
+      }),
     });
     if (response.ok) {
       const next = (await response.json()) as Pack;
@@ -669,6 +843,7 @@ export function QiuzhitaiApp() {
       );
       setSelectedAdvisor(null);
       setFeaturedAdvisorId(null);
+      setDissolvingAdvisorId(null);
       setRevealedAdvisorIds([]);
       const results = await Promise.all(
         next.advisors.map((advisor) => streamAdvisor(next, advisor)),
@@ -681,6 +856,19 @@ export function QiuzhitaiApp() {
     }
     setWorking(false);
     setControlsOpen(false);
+  }
+
+  function selectRandomCount(nextCount: number) {
+    setCount(nextCount);
+    setSelectedAdvisorIds([]);
+  }
+
+  function toggleAdvisorChoice(advisorId: string) {
+    setSelectedAdvisorIds((current) =>
+      current.includes(advisorId)
+        ? current.filter((id) => id !== advisorId)
+        : [...current, advisorId],
+    );
   }
 
   async function askFollowup(event: FormEvent) {
@@ -724,11 +912,17 @@ export function QiuzhitaiApp() {
   }
 
   async function selectAdvisor(advisor: Advisor) {
-    if (!pack || advisor.status !== "ready" || enteringAdvisor) return;
+    if (
+      !pack ||
+      advisor.status !== "ready" ||
+      enteringAdvisor ||
+      dissolvingAdvisorId
+    ) {
+      return;
+    }
     if (!revealedAdvisorIds.includes(advisor.id)) {
       setRevealedAdvisorIds((current) => [...current, advisor.id]);
       setFeaturedAdvisorId(advisor.id);
-      setNotice("一枚无名之牌已经显影。再次选择，进入它的神谕。");
       return;
     }
     setEnteringAdvisor(advisor.id);
@@ -761,6 +955,7 @@ export function QiuzhitaiApp() {
     setPack(null);
     setEnteringAdvisor(null);
     setFeaturedAdvisorId(null);
+    setDissolvingAdvisorId(null);
     setQuestion("");
     setSelectedAdvisor(null);
     setRevealedAdvisorIds([]);
@@ -783,7 +978,7 @@ export function QiuzhitaiApp() {
   }
 
   async function dissolveCurrentReading(id: string) {
-    if (burningPackId || !selected) return;
+    if (burningPackId || dissolvingAdvisorId || !selected) return;
 
     const destroyedAdvisorId = selected.id;
     const destroyedCardId = selected.cardId;
@@ -799,13 +994,42 @@ export function QiuzhitaiApp() {
       window.setTimeout(resolve, reducedMotion ? 950 : 3000),
     );
 
+    setSelectedAdvisor(null);
+    setFeaturedAdvisorId(null);
+    setFollowup("");
+    setBurningPackId(null);
+    await new Promise((resolve) =>
+      window.setTimeout(resolve, reducedMotion ? 60 : 180),
+    );
+    packStageRef.current?.scrollIntoView({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+    await new Promise((resolve) =>
+      window.setTimeout(resolve, reducedMotion ? 60 : 360),
+    );
+    setDissolvingAdvisorId(destroyedAdvisorId);
+    await new Promise((resolve) =>
+      window.setTimeout(resolve, reducedMotion ? 760 : 2350),
+    );
+
     const response = await deletion;
     if (!response.ok) {
-      setBurningPackId(null);
+      setDissolvingAdvisorId(null);
       setNotice("粒子重新凝聚，这枚卡牌未被销毁。");
       return;
     }
-
+    compactionOrigins.current = Object.fromEntries(
+      Array.from(
+        cardRailRef.current?.querySelectorAll<HTMLElement>(
+          "[data-testid='oracle-card']",
+        ) ?? [],
+      ).flatMap((card) =>
+        card.dataset.advisorId
+          ? [[card.dataset.advisorId, card.getBoundingClientRect().left]]
+          : [],
+      ),
+    );
     setPack((current) => {
       if (current?.id !== id) return current;
       const advisors = current.advisors.filter(
@@ -838,19 +1062,8 @@ export function QiuzhitaiApp() {
         ),
       ),
     );
-    setSelectedAdvisor(null);
-    setFeaturedAdvisorId(null);
-    setFollowup("");
-    setBurningPackId(null);
+    setDissolvingAdvisorId(null);
     await loadHistory(false);
-    window.setTimeout(
-      () =>
-        packStageRef.current?.scrollIntoView({
-          behavior: reducedMotion ? "auto" : "smooth",
-          block: "start",
-        }),
-      40,
-    );
   }
 
   async function renamePack(item: Pack) {
@@ -877,7 +1090,9 @@ export function QiuzhitaiApp() {
 
   async function logout() {
     await fetch("/api/auth/sign-out", { method: "POST" });
-    stopSound();
+    musicRef.current?.pause();
+    if (musicRef.current) musicRef.current.currentTime = 0;
+    setSoundOn(false);
     setAuthenticated(false);
     setPack(null);
   }
@@ -897,26 +1112,51 @@ export function QiuzhitaiApp() {
       setNotice(data.error || "账号删除失败");
       return;
     }
-    stopSound();
+    musicRef.current?.pause();
+    if (musicRef.current) musicRef.current.currentTime = 0;
+    setSoundOn(false);
     setAuthenticated(false);
     setPack(null);
   }
 
   async function toggleSound() {
-    if (soundOn) {
-      stopSound();
+    const music = musicRef.current;
+    if (!music) return;
+
+    if (!music.paused) {
+      music.pause();
       setSoundOn(false);
-    } else {
-      await startSound();
+      return;
+    }
+
+    if (music.ended) music.currentTime = 0;
+    try {
+      await music.play();
       setSoundOn(true);
+    } catch {
+      setSoundOn(false);
+      setNotice("请再次点击音符开启音乐");
+    }
+  }
+
+  async function startMusicAfterLogin() {
+    const music = musicRef.current;
+    if (!music) return;
+
+    music.currentTime = 0;
+    try {
+      await music.play();
+      setSoundOn(true);
+    } catch {
+      setSoundOn(false);
+      setNotice("浏览器阻止了自动播放，请点击音符开启音乐");
     }
   }
 
   if (booting) {
     return (
       <main className="boot-screen">
-        <div className="boot-mark">知</div>
-        <p>正在校准视角</p>
+        <div className="boot-mark">职</div>
       </main>
     );
   }
@@ -924,7 +1164,7 @@ export function QiuzhitaiApp() {
     return (
       <AuthGate
         onAuthenticated={() => {
-          void startSound().then(() => setSoundOn(true));
+          void startMusicAfterLogin();
           void checkSession();
         }}
       />
@@ -933,7 +1173,7 @@ export function QiuzhitaiApp() {
 
   return (
     <main
-      className={`oracle-shell ${pack && !working ? "has-pack" : ""} ${working ? "is-converging" : ""}`}
+      className={`oracle-shell ${pack && !working ? "has-pack" : ""} ${working ? "is-converging" : ""} ${selected?.status === "ready" ? "is-reading" : ""}`}
       data-spectrum={spectrum.id}
       style={spectrumStyle}
     >
@@ -964,7 +1204,7 @@ export function QiuzhitaiApp() {
           type="button"
           onClick={beginNewQuestion}
         >
-          <span>求知台</span>
+          <span>职乎</span>
           <em>ORACLE OF DISSENT</em>
         </button>
         <div className="top-actions">
@@ -984,19 +1224,17 @@ export function QiuzhitaiApp() {
       <section className="question-stage">
         <p className="eyebrow">ONE QUESTION · DIFFERENT TRUTHS</p>
         <h1>
-          {pack
-            ? working
-              ? "答案尚未显形"
-              : "神谕等待选择"
-            : "把你的困惑，交给不同的人生"}
+          <FloatingText
+            mode="tidal"
+            text={
+              pack
+                ? working
+                  ? "答案尚未显形"
+                  : "神谕等待选择"
+                : "把你的困惑，交给不同的人生"
+            }
+          />
         </h1>
-        <p className="stage-lead">
-          {pack
-            ? working
-              ? "不同立场正在事件视界后收束。"
-              : "先凭直觉选择一张。牌面只会显露来者，不会替你决定。"
-            : "描述真实处境。不同立场将被封入四张无名之牌。"}
-        </p>
         {pack && working ? (
           <div
             className="convergence-ritual"
@@ -1005,14 +1243,14 @@ export function QiuzhitaiApp() {
             aria-live="polite"
           >
             <span>CONVERGENCE</span>
-            <p>黑洞正在折叠不同的人生</p>
             <button
               type="button"
+              aria-label="停止召唤"
               onClick={() =>
                 aborters.current.forEach((controller) => controller.abort())
               }
             >
-              停止召唤
+              ×
             </button>
           </div>
         ) : pack ? (
@@ -1020,12 +1258,15 @@ export function QiuzhitaiApp() {
             <p>{pack.question}</p>
             {pack.problemMirror && (
               <blockquote>
-                <span>所问之事的回声</span>
                 {pack.problemMirror}
               </blockquote>
             )}
-            <button className="consult-button" onClick={beginNewQuestion} type="button">
-              <span>提出一个新问题</span>
+            <button
+              className="consult-button"
+              onClick={beginNewQuestion}
+              type="button"
+              aria-label="提出一个新问题"
+            >
               <i />
             </button>
           </div>
@@ -1049,7 +1290,7 @@ export function QiuzhitaiApp() {
               }}
               disabled={working || ingestingQuestion}
               maxLength={1000}
-              placeholder="写下那件尚未决定的事"
+              placeholder="…"
               aria-label="描述你的职场问题"
             />
             {question.length > 850 && (
@@ -1080,15 +1321,6 @@ export function QiuzhitaiApp() {
                 ))}
               </span>
               <span className="horizon-core" aria-hidden="true" />
-              <span className="horizon-instruction" aria-live="polite">
-                {ingestingQuestion
-                  ? "正在越过边界"
-                  : holdingQuestion
-                    ? "不要松开"
-                    : question.trim()
-                      ? "长按，使问题越过边界"
-                      : ""}
-              </span>
             </button>
           </form>
         )}
@@ -1098,7 +1330,7 @@ export function QiuzhitaiApp() {
               type="button"
               className="hidden-control"
               onClick={() => setControlsOpen((open) => !open)}
-              aria-label="设置抽取数量"
+              aria-label="设置抽取方式"
             >
               <span />
               <span />
@@ -1106,25 +1338,12 @@ export function QiuzhitaiApp() {
             </button>
             {controlsOpen && (
               <aside className="control-popover">
-                <p>本次抽取视角数量</p>
-                <div className="number-grid">
-                  {Array.from({ length: 8 }, (_, index) => index + 1).map(
-                    (number) => (
-                      <button
-                        type="button"
-                        aria-label={`抽取 ${number} 张`}
-                        className={count === number ? "active" : ""}
-                        onClick={() => {
-                          setCount(number);
-                          setControlsOpen(false);
-                        }}
-                        key={number}
-                      >
-                        {number}
-                      </button>
-                    ),
-                  )}
-                </div>
+                <PerspectivePicker
+                  count={count}
+                  selectedAdvisorIds={selectedAdvisorIds}
+                  onCountSelect={selectRandomCount}
+                  onAdvisorToggle={toggleAdvisorChoice}
+                />
               </aside>
             )}
           </div>
@@ -1143,10 +1362,6 @@ export function QiuzhitaiApp() {
                   {spectrum.name}
                 </span>
               </p>
-              <h2>{pack.title}</h2>
-              <p className="pack-instruction">
-                第一次选择翻开卡面，第二次选择进入神谕。
-              </p>
             </div>
             <div className="pack-tools">
               <button
@@ -1161,33 +1376,27 @@ export function QiuzhitaiApp() {
               </button>
               {controlsOpen && (
                 <aside className="control-popover">
-                  <p>抽取视角数量</p>
-                  <div className="number-grid">
-                    {Array.from({ length: 8 }, (_, index) => index + 1).map(
-                      (number) => (
-                        <button
-                          type="button"
-                          aria-label={`抽取 ${number} 张`}
-                          className={count === number ? "active" : ""}
-                          onClick={() => setCount(number)}
-                          key={number}
-                        >
-                          {number}
-                        </button>
-                      ),
-                    )}
-                  </div>
+                  <PerspectivePicker
+                    count={count}
+                    selectedAdvisorIds={selectedAdvisorIds}
+                    onCountSelect={selectRandomCount}
+                    onAdvisorToggle={toggleAdvisorChoice}
+                  />
                   <button type="button" className="reroll-button" onClick={reroll}>
-                    重新抽取并覆盖当前卡牌包
+                    重抽
                   </button>
                   <button type="button" className="new-question-button" onClick={beginNewQuestion}>
-                    提出新问题
+                    新问
                   </button>
                 </aside>
               )}
             </div>
           </div>
-          <div className="card-rail">
+          <div
+            className="card-rail"
+            data-card-count={pack.advisors.length}
+            ref={cardRailRef}
+          >
             {pack.advisors.map((advisor, index) => (
               <AdvisorCard
                 key={advisor.id}
@@ -1196,6 +1405,7 @@ export function QiuzhitaiApp() {
                 revealed={revealedAdvisorIds.includes(advisor.id)}
                 selected={selectedAdvisor === advisor.id}
                 entering={enteringAdvisor === advisor.id}
+                dissolving={dissolvingAdvisorId === advisor.id}
                 onClick={() => void selectAdvisor(advisor)}
                 index={index}
               />
@@ -1236,11 +1446,12 @@ export function QiuzhitaiApp() {
             />
             <span className="featured-card-vignette" aria-hidden="true" />
             <span className="featured-card-identity">
-              <strong>{featuredAdvisor.name}</strong>
+              <strong>
+                <FloatingText text={featuredAdvisor.name} mode="identity" />
+              </strong>
               <small>{featuredAdvisor.epithet}</small>
             </span>
           </button>
-          <p>再次选择，让这道目光化为神谕</p>
         </div>
       )}
 
@@ -1268,7 +1479,7 @@ export function QiuzhitaiApp() {
             disabled={burningPackId === pack.id}
             onClick={() => setSelectedAdvisor(null)}
           >
-            封存
+            ×
           </button>
           <header>
             <div className="advisor-monogram" aria-hidden="true">
@@ -1334,7 +1545,7 @@ export function QiuzhitaiApp() {
           <form className="oracle-inquiry" onSubmit={askFollowup}>
             <label htmlFor="oracle-followup">
               <span>ASK AGAIN</span>
-              再求一示
+              <span className="sr-only">再求一示</span>
             </label>
             <textarea
               id="oracle-followup"
@@ -1351,7 +1562,7 @@ export function QiuzhitaiApp() {
                 burningPackId === pack.id
               }
               maxLength={1000}
-              placeholder="若仍有未明之处，将一个更具体的问题写在这里。每枚神谕彼此隔绝。"
+              placeholder="…"
             />
             {states[selected.id] === "summoning" ? (
               <button type="button" onClick={stopSelectedGeneration}>
@@ -1360,9 +1571,10 @@ export function QiuzhitaiApp() {
             ) : (
               <button
                 type="submit"
+                aria-label="请求续示"
                 disabled={!followup.trim() || burningPackId === pack.id}
               >
-                请求续示
+                ↗
               </button>
             )}
           </form>
@@ -1377,9 +1589,8 @@ export function QiuzhitaiApp() {
               onBlur={() => pack && void persistDecision(pack.id, decision, true)}
               disabled={burningPackId === pack.id}
               maxLength={1000}
-              placeholder="神谕止于此，你的判断从这里开始。"
+              placeholder="…"
             />
-            <span className="autosave-state">自动保存</span>
           </div>
           <div className="reading-actions">
             <a
@@ -1442,10 +1653,6 @@ export function QiuzhitaiApp() {
               ))}
             </div>
             <div className="particle-horizon" aria-hidden="true" />
-            <p>
-              <span>THE UNBINDING</span>
-              神谕正在碎裂为粒子流
-            </p>
           </div>
         )}
         </div>
@@ -1536,8 +1743,7 @@ export function QiuzhitaiApp() {
       </aside>
 
       <footer className="site-footer">
-        <span>求知台 · 本地原型</span>
-        <p>观点不是答案。分歧只是帮助你看见自己的尺度。</p>
+        <span>职乎</span>
         <span>AI OPINION SIMULATION</span>
       </footer>
     </main>

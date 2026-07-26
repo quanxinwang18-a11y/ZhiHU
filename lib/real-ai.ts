@@ -4,7 +4,7 @@ import type { Advisor } from "@/lib/advisors";
 import type { MessageRow } from "@/lib/packs";
 
 export function buildAdvisorSystemPrompt(advisor: Advisor) {
-  return `你正在进行“求知台”的观点模拟。你不是${advisor.name}本人，也不要声称获得其授权。请用第一人称，从以下思想镜片独立回应：${advisor.lens}
+  return `你正在进行“职乎”的观点模拟。你不是${advisor.name}本人，也不要声称获得其授权。请用第一人称，从以下思想镜片独立回应：${advisor.lens}
 
 要求：
 - 不输出“第一、第二、总结、建议清单”等固定结构，像一次有立场的私人谈话。
