@@ -130,12 +130,49 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .oracle-shell.has-pack .question-stage { min-height: 0; padding: clamp(38px, 5vh, 66px) 20px 34px; }
 .oracle-shell.has-pack .question-stage h1 { margin: 4px 0 10px; font-size: clamp(34px, 3vw, 48px); }
 .oracle-shell.is-converging .question-stage { justify-content: flex-start; }
-.oracle-shell.is-converging .question-stage h1 { text-shadow: 0 0 42px color-mix(in srgb, var(--spectrum-primary) 18%, transparent); }
-.convergence-ritual { width: min(420px, 48vw); min-height: 220px; padding-top: 128px; display: flex; flex-direction: column; align-items: center; color: #746d62; pointer-events: none; }
-.convergence-ritual > span { color: color-mix(in srgb, var(--spectrum-primary) 72%, #756c60); font: 8px var(--sans); letter-spacing: .34em; animation: convergenceSignal 1.6s ease-in-out infinite; }
-.convergence-ritual button { margin-top: 20px; padding: 7px 10px; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--spectrum-primary) 22%, transparent); background: transparent; color: #5c564e; font-size: 8px; letter-spacing: .12em; cursor: pointer; pointer-events: auto; }
-.convergence-ritual button:hover { color: var(--gold); border-color: var(--gold); }
-@keyframes convergenceSignal { 50% { opacity: .42; letter-spacing: .4em; text-shadow: 0 0 22px color-mix(in srgb, var(--spectrum-primary) 55%, transparent); } }
+.oracle-shell.is-converging .question-stage > .eyebrow { opacity: 0; transform: translateY(-8px); }
+.question-stage > .eyebrow { transition: opacity .65s var(--ease-oracle), transform .65s var(--ease-oracle); }
+.convergence-sigil { position: relative; width: min(390px, 78vw); height: 244px; display: grid; place-items: center; pointer-events: none; }
+.convergence-field { --convergence-radius: min(142px, 32vw); position: relative; width: min(320px, 72vw); height: 178px; isolation: isolate; filter: drop-shadow(0 0 34px color-mix(in srgb, var(--spectrum-primary) 17%, transparent)); }
+.convergence-field::before, .convergence-field::after { content: ""; position: absolute; left: 50%; top: 50%; z-index: -1; pointer-events: none; }
+.convergence-field::before { width: 88%; height: 1px; transform: translate(-50%,-50%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--spectrum-primary) 28%, transparent) 18%, color-mix(in srgb, var(--spectrum-secondary) 62%, transparent) 50%, color-mix(in srgb, var(--spectrum-primary) 28%, transparent) 82%, transparent); animation: convergenceAxis 2.8s ease-in-out infinite; }
+.convergence-field::after { width: 48%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%,-50%); background: radial-gradient(circle, color-mix(in srgb, var(--spectrum-secondary) 14%, transparent), color-mix(in srgb, var(--spectrum-primary) 7%, transparent) 32%, transparent 70%); animation: convergenceHalo 2.4s ease-in-out infinite; }
+.convergence-vector { --vector-angle: 0deg; --vector-delay: 0s; --vector-distance: 100px; position: absolute; left: 50%; top: 50%; z-index: 1; display: block; width: var(--vector-length, 72px); height: 1px; transform-origin: 0 50%; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--spectrum-primary) 42%, transparent) 42%, color-mix(in srgb, var(--spectrum-secondary) 76%, transparent) 92%, transparent); opacity: 0; pointer-events: none; animation: convergenceVector 2.15s var(--vector-delay) cubic-bezier(.58,.08,.84,.44) infinite; }
+.convergence-vector::after { content: ""; position: absolute; right: 6px; top: -2px; width: 5px; height: 5px; background: color-mix(in srgb, var(--spectrum-secondary) 82%, #fff); box-shadow: 0 0 10px var(--spectral-flare), 0 0 22px color-mix(in srgb, var(--spectrum-primary) 58%, transparent); }
+.convergence-vector-one { --vector-angle: 198deg; --vector-delay: -.35s; --vector-distance: min(132px, 30vw); --vector-length: 86px; }
+.convergence-vector-two { --vector-angle: 316deg; --vector-delay: -1.12s; --vector-distance: min(118px, 27vw); --vector-length: 58px; }
+.convergence-vector-three { --vector-angle: 74deg; --vector-delay: -1.76s; --vector-distance: min(104px, 24vw); --vector-length: 72px; }
+.convergence-core { position: absolute; left: 50%; top: 50%; z-index: 4; width: 8px; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%,-50%); background: color-mix(in srgb, var(--spectrum-secondary) 72%, #fff); box-shadow: 0 0 10px #fff, 0 0 26px var(--spectral-flare), 0 0 54px var(--spectral-line), 0 0 96px color-mix(in srgb, var(--spectrum-primary) 42%, transparent); animation: convergenceCore 1.35s ease-in-out infinite; }
+.convergence-node { --node-angle: 0deg; --node-delay: 0s; position: absolute; left: calc(50% - 4.5px); top: calc(50% - 4.5px); z-index: 3; width: 9px; height: 9px; border: 1px solid color-mix(in srgb, var(--spectrum-secondary) 72%, transparent); background: color-mix(in srgb, var(--spectrum-primary) 58%, var(--ink-deep)); box-shadow: 0 0 8px var(--spectral-flare), 0 0 24px color-mix(in srgb, var(--spectrum-primary) 58%, transparent); opacity: 0; transform-origin: 4.5px 4.5px; animation: convergenceNode 2.2s var(--node-delay) cubic-bezier(.55,.08,.84,.48) infinite; }
+.convergence-node:nth-of-type(3n) { width: 7px; height: 7px; border-radius: 50%; }
+.convergence-node:nth-of-type(2n) { animation-duration: 2.7s; }
+.convergence-particle { --particle-angle: 0deg; --particle-delay: 0s; --particle-duration: 2s; --particle-radius: min(120px, 28vw); --particle-size: 5px; position: absolute; left: 50%; top: 50%; z-index: 2; width: var(--particle-size); height: var(--particle-size); border-radius: 1px; background: color-mix(in srgb, var(--spectrum-secondary) 72%, #fff); box-shadow: 0 0 7px #fff, 0 0 18px var(--spectral-flare), 0 0 34px color-mix(in srgb, var(--spectrum-primary) 58%, transparent); opacity: 0; pointer-events: none; animation: convergenceParticle var(--particle-duration) var(--particle-delay) cubic-bezier(.58,.04,.86,.42) infinite; }
+.convergence-particle:nth-child(3n) { border-radius: 50%; background: color-mix(in srgb, var(--spectrum-primary) 76%, #fff); }
+.convergence-particle:nth-child(4n) { box-shadow: 0 0 9px #fff, 0 0 24px var(--spectral-flare), 0 0 42px color-mix(in srgb, var(--spectrum-primary) 68%, transparent); }
+.convergence-sigil button { position: absolute; left: 50%; bottom: 9px; z-index: 5; width: 34px; height: 34px; padding: 0; transform: translateX(-50%); border: 0; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--spectrum-primary) 8%, transparent), transparent 70%); color: color-mix(in srgb, var(--spectrum-primary) 52%, #5c564e); font: 300 14px var(--sans); cursor: pointer; pointer-events: auto; opacity: .62; transition: opacity .45s var(--ease-oracle), color .45s var(--ease-oracle), box-shadow .45s var(--ease-oracle); }
+.convergence-sigil button:hover { opacity: 1; color: var(--bright); box-shadow: 0 0 28px var(--spectral-whisper); }
+@keyframes convergenceAxis { 0%, 100% { opacity: .18; transform: translate(-50%,-50%) scaleX(.42); } 50% { opacity: .78; transform: translate(-50%,-50%) scaleX(1); } }
+@keyframes convergenceHalo { 0%, 100% { opacity: .3; transform: translate(-50%,-50%) scale(.6); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.12); } }
+@keyframes convergenceVector {
+  0% { opacity: 0; transform: rotate(var(--vector-angle)) translateX(var(--vector-distance)) scaleX(.18); filter: blur(.8px); }
+  22% { opacity: .72; filter: blur(0); }
+  70% { opacity: .34; }
+  100% { opacity: 0; transform: rotate(calc(var(--vector-angle) + 5deg)) translateX(7px) scaleX(.06); filter: blur(1.2px); }
+}
+@keyframes convergenceCore { 0%, 100% { transform: translate(-50%,-50%) scale(.72); opacity: .68; } 48% { transform: translate(-50%,-50%) scale(1.35); opacity: 1; } }
+@keyframes convergenceNode {
+  0% { opacity: 0; transform: rotate(var(--node-angle)) translateX(var(--convergence-radius)) scale(.52); filter: blur(.8px); }
+  16% { opacity: .92; filter: blur(0); }
+  72% { opacity: .58; }
+  100% { opacity: 0; transform: rotate(calc(var(--node-angle) + 24deg)) translateX(5px) scale(.08); filter: blur(1.5px); }
+}
+@keyframes convergenceParticle {
+  0% { opacity: 0; transform: rotate(var(--particle-angle)) translateX(var(--particle-radius)) scale(.35); filter: blur(1px); }
+  13% { opacity: .88; filter: blur(0); }
+  46% { opacity: 1; }
+  78% { opacity: .72; }
+  100% { opacity: 0; transform: rotate(calc(var(--particle-angle) + 17deg)) translateX(4px) scale(1.45); filter: blur(2.2px); }
+}
 .question-form { width: min(880px, 76vw); position: relative; }
 .question-form::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 38%; width: 112%; height: 128%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-primary) 7%, transparent), color-mix(in srgb, var(--ink) 42%, transparent) 38%, transparent 70%); filter: blur(18px); opacity: .7; transition: opacity .8s var(--ease-oracle), transform .8s var(--ease-oracle); }
 .question-form:focus-within::before { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
@@ -498,27 +535,28 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .reading-room::before { content: ""; position: absolute; left: 50%; top: 245px; width: min(880px, 72vw); height: 560px; transform: translateX(-50%); pointer-events: none; background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-secondary) 4%, transparent), transparent 66%); filter: blur(18px); opacity: .72; }
 .close-manuscript { position: fixed; z-index: 12; right: 24px; top: 20px; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: radial-gradient(circle, var(--spectral-haze), transparent 70%); color: #837866; font: 18px var(--serif); cursor: pointer; }
 .close-manuscript:hover { color: var(--gold); border-color: var(--gold); }
-.reading-room > header { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 26px; text-align: left; }
-.advisor-monogram { display: grid; place-items: center; width: 54px; aspect-ratio: 1; border: 0; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--spectrum-primary) 14%, transparent), transparent 68%); color: var(--bone); font: 20px var(--serif); text-shadow: 0 0 22px color-mix(in srgb, var(--spectrum-primary) 34%, transparent); box-shadow: 0 0 38px color-mix(in srgb, var(--spectrum-primary) 5%, transparent); }
-.reading-room h2 { margin: 0 0 5px; font: 500 22px var(--serif); letter-spacing: .17em; }
-.reading-room header span { color: #777167; font-size: 10px; }
+.reading-room > header { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 22px; padding-bottom: 34px; text-align: left; }
+.advisor-monogram { display: grid; place-items: center; width: 60px; aspect-ratio: 1; border: 0; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--spectrum-primary) 14%, transparent), transparent 68%); color: var(--bone); font: 22px var(--serif); text-shadow: 0 0 22px color-mix(in srgb, var(--spectrum-primary) 34%, transparent); box-shadow: 0 0 38px color-mix(in srgb, var(--spectrum-primary) 5%, transparent); }
+.reading-room .eyebrow { color: color-mix(in srgb, var(--spectrum-primary) 72%, #81786a); font-size: 11px; }
+.reading-room h2 { margin: 0 0 7px; color: color-mix(in srgb, var(--bone) 88%, var(--spectrum-secondary)); font: 500 clamp(23px, 2vw, 27px) var(--serif); letter-spacing: .15em; }
+.reading-room header span { color: color-mix(in srgb, var(--spectrum-secondary) 34%, #8a8276); font-size: 12px; letter-spacing: .035em; }
 .oracle-scripture { position: relative; z-index: 1; padding: 30px 0 22px; isolation: isolate; }
 .oracle-scripture::before { content: ""; position: absolute; z-index: 0; left: 50%; top: 135px; width: min(610px, 53vw); height: 820px; transform: translateX(-50%); pointer-events: none; background: var(--oracle-identity-image) center top / cover no-repeat; opacity: .038; filter: grayscale(1) contrast(1.12); mix-blend-mode: screen; -webkit-mask-image: radial-gradient(ellipse at 50% 37%, #000 0 23%, rgba(0,0,0,.68) 42%, transparent 72%); mask-image: radial-gradient(ellipse at 50% 37%, #000 0 23%, rgba(0,0,0,.68) 42%, transparent 72%); }
 .oracle-scripture > * { position: relative; z-index: 1; }
 .reading-room[data-advisor-id="alibaba"] .oracle-scripture::before,
 .reading-room[data-advisor-id="bytedance"] .oracle-scripture::before { width: min(510px, 44vw); background-size: contain; opacity: .052; }
-.original-question { margin: 0 auto 86px; width: min(660px, 88%); color: #827b70; font: 12px/1.9 var(--serif); padding: 22px 24px; text-align: center; background: radial-gradient(ellipse, var(--spectral-whisper), transparent 72%); }
-.original-question small { display: block; margin-bottom: 9px; color: #625c52; font: 8px var(--sans); letter-spacing: .22em; }
+.original-question { margin: 0 auto 92px; width: min(720px, 90%); color: color-mix(in srgb, var(--bone) 58%, #7f786e); font: 15px/2 var(--serif); padding: 25px 28px; text-align: center; letter-spacing: .025em; background: radial-gradient(ellipse, var(--spectral-whisper), transparent 72%); }
+.original-question small { display: block; margin-bottom: 11px; color: color-mix(in srgb, var(--spectrum-primary) 56%, #655e54); font: 9px var(--sans); letter-spacing: .24em; }
 .oracle-inscription { position: relative; width: min(720px, 92%); margin: 0 auto 54px; padding: 0 0 24px 82px; }
 .oracle-inscription::before { content: "◇"; position: absolute; left: 17px; top: 32px; color: color-mix(in srgb, var(--spectrum-primary) 52%, #4f4a43); font-size: 13px; }
 .oracle-inscription > header { position: relative; margin-bottom: 20px; display: flex; align-items: baseline; gap: 14px; }
-.oracle-inscription > header span { color: #625b50; font: 8px var(--sans); letter-spacing: .24em; }
-.oracle-inscription > header strong { color: var(--gold); font: 400 13px var(--serif); letter-spacing: .14em; }
+.oracle-inscription > header span { color: color-mix(in srgb, var(--spectrum-primary) 42%, #665f54); font: 9px var(--sans); letter-spacing: .25em; }
+.oracle-inscription > header strong { color: color-mix(in srgb, var(--spectrum-primary) 86%, #b9aa91); font: 400 15px var(--serif); letter-spacing: .14em; }
 .oracle-revelation { width: min(980px, 96%); margin-bottom: 116px; padding: 0; text-align: center; }
 .oracle-revelation::before { display: none; }
 .oracle-revelation > header { justify-content: center; margin-bottom: 0; }
 .oracle-revelation > header::after { content: ""; width: 28px; height: 1px; margin-left: 8px; background: linear-gradient(90deg, color-mix(in srgb, var(--spectrum-primary) 38%, transparent), transparent); }
-.oracle-invocation { width: min(590px, 82%); margin: 46px auto 0; color: #91897d; font: 400 14px/2 var(--serif); letter-spacing: .055em; animation: scriptureRise .9s .1s var(--ease-oracle) both; }
+.oracle-invocation { width: min(680px, 86%); margin: 48px auto 0; color: color-mix(in srgb, var(--spectrum-secondary) 46%, #a39a8d); font: 400 clamp(16px, 1.18vw, 18px)/2 var(--serif); letter-spacing: .05em; animation: scriptureRise .9s .1s var(--ease-oracle) both; }
 .oracle-verdict { position: relative; width: min(930px, 96%); min-height: 260px; margin: 32px auto 62px; padding: 64px 46px; display: grid; place-content: center; border: 0; color: inherit; isolation: isolate; animation: verdictEmerge 1.2s .16s var(--ease-oracle) both; }
 .oracle-verdict::before, .oracle-verdict::after { content: ""; position: absolute; left: 50%; pointer-events: none; transform: translateX(-50%); }
 .oracle-verdict::before { z-index: -1; top: 50%; width: 86%; height: 120%; transform: translate(-50%,-50%); background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-primary) 8%, transparent), transparent 68%); filter: blur(18px); }
@@ -528,43 +566,43 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .floating-text--verdict { perspective: none; }
 .floating-text--verdict .floating-text__body { text-wrap: balance; background: linear-gradient(112deg, #a99f90 3%, var(--bone) 31%, var(--spectrum-secondary) 52%, #f0e9dd 68%, #9b9285 97%); background-size: 240% 100%; background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent; text-shadow: 0 0 32px color-mix(in srgb, var(--spectrum-secondary) 9%, transparent); animation: verdictLight 8s ease-in-out infinite alternate; }
 .oracle-verdict.is-long p { font-size: clamp(30px, 3.35vw, 50px); line-height: 1.52; }
-.oracle-exegesis { width: min(650px, 76%); margin: 0 auto; text-align: left; animation: scriptureRise 1s .34s var(--ease-oracle) both; }
-.oracle-exegesis > small { display: block; margin-bottom: 25px; color: #5e584f; font: 7px var(--sans); letter-spacing: .28em; }
-.oracle-exegesis p { margin: 0 0 22px; color: #9d9589; font: 400 13px/2.05 var(--serif); letter-spacing: .035em; }
-.oracle-exegesis p:first-of-type::first-letter { color: var(--gold); font-size: 1.45em; }
-.oracle-revelation .stopped-label { display: block; width: min(650px, 76%); margin: 18px auto 0; text-align: left; }
+.oracle-exegesis { width: min(720px, 82%); margin: 0 auto; text-align: left; animation: scriptureRise 1s .34s var(--ease-oracle) both; }
+.oracle-exegesis > small { display: block; margin-bottom: 27px; color: color-mix(in srgb, var(--spectrum-primary) 42%, #645d53); font: 9px var(--sans); letter-spacing: .3em; }
+.oracle-exegesis p { margin: 0 0 26px; color: color-mix(in srgb, var(--bone) 68%, #898176); font: 400 clamp(16px, 1.14vw, 17.5px)/2.05 var(--serif); letter-spacing: .035em; }
+.oracle-exegesis p:first-of-type::first-letter { color: color-mix(in srgb, var(--spectrum-primary) 88%, #d5b98b); font-size: 1.55em; text-shadow: 0 0 18px var(--spectral-haze); }
+.oracle-revelation .stopped-label { display: block; width: min(720px, 82%); margin: 18px auto 0; text-align: left; }
 .oracle-revelation + .oracle-revelation { padding-top: 58px; border-top: 1px solid color-mix(in srgb, var(--spectrum-primary) 8%, transparent); }
 .oracle-revelation + .oracle-revelation .oracle-verdict { min-height: 210px; }
 .oracle-revelation + .oracle-revelation .oracle-verdict p { font-size: clamp(29px, 3.2vw, 46px); }
 @keyframes scriptureRise { from { opacity: 0; transform: translateY(12px); filter: blur(3px); } }
 @keyframes verdictEmerge { from { opacity: 0; transform: scale(.975); filter: blur(8px); } }
 @keyframes verdictLight { from { background-position: 10% 50%; } to { background-position: 90% 50%; } }
-.oracle-inscription.oracle-question { width: min(620px, 82%); margin-left: auto; margin-right: 5%; padding-left: 60px; opacity: .72; }
+.oracle-inscription.oracle-question { width: min(680px, 84%); margin-left: auto; margin-right: 5%; padding-left: 60px; opacity: .9; }
 .oracle-inscription.oracle-question::before { content: "问"; left: 10px; color: #746d62; font: 11px var(--serif); }
 .oracle-inscription.oracle-echo::before { content: "示"; font: 11px var(--serif); }
-.markdown-body { max-width: 680px; color: #d2cbbf; font: 400 15px/1.8 var(--serif); }
+.markdown-body { max-width: 720px; color: color-mix(in srgb, var(--bone) 82%, var(--spectrum-secondary)); font: 400 16.5px/1.95 var(--serif); letter-spacing: .02em; }
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body > :last-child { margin-bottom: 0; }
-.markdown-body blockquote { margin-left: 0; padding-left: 16px; border-left: 1px solid var(--gold); color: #aca291; }
+.markdown-body blockquote { margin-left: 0; padding-left: 18px; border-left: 1px solid var(--gold); color: color-mix(in srgb, var(--spectrum-secondary) 52%, #aca291); }
 .markdown-body ul, .markdown-body ol { padding-left: 1.3em; }
-.stopped-label { display: inline-block; margin-top: 12px; color: color-mix(in srgb, var(--spectrum-primary) 62%, #665f56); font: 9px var(--sans); letter-spacing: .12em; }
-.oracle-question .markdown-body { color: #9d968a; font-size: 13px; }
+.stopped-label { display: inline-block; margin-top: 12px; color: color-mix(in srgb, var(--spectrum-primary) 72%, #746c61); font: 10px var(--sans); letter-spacing: .12em; }
+.oracle-question .markdown-body { color: color-mix(in srgb, var(--spectrum-secondary) 42%, #aaa195); font-size: 15.5px; }
 .streaming i { display: inline-block; width: 5px; height: 1em; margin-left: 4px; vertical-align: -.12em; background: var(--gold); animation: blink .8s infinite; }
 @keyframes blink { 50% { opacity: 0; } }
-.oracle-inquiry { display: grid; grid-template-columns: 145px 1fr 126px; align-items: stretch; background: radial-gradient(ellipse at 50% 100%, var(--spectral-whisper), transparent 72%); }
+.oracle-inquiry { display: grid; grid-template-columns: 155px 1fr 132px; align-items: stretch; background: radial-gradient(ellipse at 50% 100%, var(--spectral-whisper), transparent 72%); }
 .oracle-inquiry:focus-within { box-shadow: 0 0 52px var(--spectral-whisper); }
-.oracle-inquiry label { padding: 20px 18px; color: var(--gold); font: 400 13px/1.6 var(--serif); letter-spacing: .12em; }
-.oracle-inquiry label span { display: block; margin-bottom: 7px; color: #5f584d; font: 8px var(--sans); letter-spacing: .22em; }
-.oracle-inquiry textarea { min-height: 112px; resize: none; padding: 20px 18px; outline: 0; border: 0; background: transparent; color: var(--bone); caret-color: var(--gold); font: 13px/1.75 var(--serif); }
-.oracle-inquiry button { margin: 12px 0 12px 12px; border: 0; background: radial-gradient(circle, var(--spectral-haze), transparent 72%); color: var(--bright); cursor: pointer; letter-spacing: .1em; }
+.oracle-inquiry label { padding: 22px 20px; color: color-mix(in srgb, var(--spectrum-primary) 84%, #bda884); font: 400 15px/1.6 var(--serif); letter-spacing: .12em; }
+.oracle-inquiry label span { display: block; margin-bottom: 7px; color: color-mix(in srgb, var(--spectrum-primary) 38%, #625b50); font: 9px var(--sans); letter-spacing: .24em; }
+.oracle-inquiry textarea { min-height: 118px; resize: none; padding: 22px 20px; outline: 0; border: 0; background: transparent; color: color-mix(in srgb, var(--bone) 88%, var(--spectrum-secondary)); caret-color: var(--gold); font: 16px/1.8 var(--serif); }
+.oracle-inquiry button { margin: 12px 0 12px 12px; border: 0; background: radial-gradient(circle, var(--spectral-haze), transparent 72%); color: var(--bright); cursor: pointer; font-size: 11px; letter-spacing: .1em; }
 .oracle-inquiry button:hover { background: var(--spectral-whisper); border-color: color-mix(in srgb, var(--spectrum-primary) 45%, transparent); }
 .oracle-inquiry button:disabled { opacity: .35; cursor: default; }
 .decision-area { margin-top: 82px; padding-top: 28px; display: grid; grid-template-columns: 235px 1fr auto; gap: 20px; align-items: stretch; }
-.decision-area h3 { margin: 0; font: 400 17px/1.6 var(--serif); }
-.decision-area textarea { min-height: 90px; resize: none; border: 0; background: radial-gradient(ellipse at 28% 100%, var(--spectral-whisper), transparent 72%); color: var(--bone); padding: 15px; outline: 0; box-shadow: none; caret-color: var(--gold); font: 13px/1.7 var(--serif); transition: text-shadow .6s var(--ease-oracle); }
+.decision-area h3 { margin: 0; color: color-mix(in srgb, var(--bone) 78%, var(--spectrum-secondary)); font: 400 20px/1.6 var(--serif); }
+.decision-area textarea { min-height: 100px; resize: none; border: 0; background: radial-gradient(ellipse at 28% 100%, var(--spectral-whisper), transparent 72%); color: color-mix(in srgb, var(--bone) 88%, var(--spectrum-secondary)); padding: 18px; outline: 0; box-shadow: none; caret-color: var(--gold); font: 16px/1.8 var(--serif); transition: text-shadow .6s var(--ease-oracle); }
 .decision-area textarea:focus { text-shadow: 0 0 20px var(--spectral-bone-whisper); }
 .reading-actions { display: flex; justify-content: flex-end; gap: 22px; margin-top: 22px; }
-.reading-actions a, .reading-actions button { color: #70695e; background: transparent; border: 0; font-size: 10px; cursor: pointer; text-decoration: none; }
+.reading-actions a, .reading-actions button { color: color-mix(in srgb, var(--spectrum-primary) 38%, #7b7367); background: transparent; border: 0; font-size: 12px; cursor: pointer; text-decoration: none; letter-spacing: .04em; }
 .reading-actions a:hover, .reading-actions button:hover { color: var(--gold); }
 .reading-actions a[aria-disabled="true"], .reading-actions button:disabled { opacity: .24; pointer-events: none; }
 
@@ -713,4 +751,7 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
   .fracture-field i, .particle-stream span { animation-duration: .72s !important; animation-delay: 0s !important; }
   .oracle-card.dissolving-card .card-flipper, .card-particle-wind span { animation-duration: .68s !important; animation-delay: 0s !important; }
   .floating-glyph { transform: none !important; filter: none !important; }
+  .convergence-node { opacity: .64 !important; filter: none !important; transform: rotate(var(--node-angle)) translateX(var(--convergence-radius)) !important; }
+  .convergence-particle { opacity: .52 !important; filter: none !important; transform: rotate(var(--particle-angle)) translateX(var(--particle-radius)) !important; }
+  .convergence-core { opacity: 1 !important; transform: translate(-50%,-50%) !important; }
 }

@@ -155,6 +155,67 @@ function Icon({
   );
 }
 
+function ConvergenceSigil({
+  nodeCount,
+  onStop,
+}: {
+  nodeCount: number;
+  onStop?: () => void;
+}) {
+  const normalizedNodeCount = Math.max(1, Math.min(8, nodeCount));
+  const particleCount = Math.max(20, normalizedNodeCount * 4);
+
+  return (
+    <div
+      className="convergence-sigil"
+      data-testid="convergence-sigil"
+      role="status"
+      aria-label="黑洞正在折叠不同的人生"
+      aria-live="polite"
+    >
+      <span className="sr-only">神谕正在显形</span>
+      <div className="convergence-field" aria-hidden="true">
+        <i className="convergence-vector convergence-vector-one" />
+        <i className="convergence-vector convergence-vector-two" />
+        <i className="convergence-vector convergence-vector-three" />
+        <b className="convergence-core" />
+        {Array.from({ length: normalizedNodeCount }, (_, index) => (
+          <span
+            className="convergence-node"
+            key={index}
+            style={
+              {
+                "--node-angle": `${(index * 360) / normalizedNodeCount}deg`,
+                "--node-delay": `${index * -0.21}s`,
+              } as CSSProperties
+            }
+          />
+        ))}
+        {Array.from({ length: particleCount }, (_, index) => (
+          <span
+            className="convergence-particle"
+            key={`particle-${index}`}
+            style={
+              {
+                "--particle-angle": `${(index * 137.5 + (index % 3) * 11) % 360}deg`,
+                "--particle-delay": `${index * -0.09}s`,
+                "--particle-duration": `${1.65 + (index % 5) * 0.18}s`,
+                "--particle-radius": `min(${96 + (index % 5) * 14}px, ${25 + (index % 4) * 2}vw)`,
+                "--particle-size": `${4 + (index % 4) * 1.35}px`,
+              } as CSSProperties
+            }
+          />
+        ))}
+      </div>
+      {onStop && (
+        <button type="button" aria-label="停止召唤" onClick={onStop}>
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
 function PerspectivePicker({
   mode,
   count,
@@ -554,6 +615,10 @@ export function QiuzhitaiApp() {
   const selected = pack?.advisors.find(
     (advisor) => advisor.id === selectedAdvisor,
   );
+  const converging = working || ingestingQuestion;
+  const convergenceNodeCount =
+    pack?.requestedCardCount ??
+    (selectionMode === "manual" ? selectedAdvisorIds.length : count);
   const featuredAdvisor = pack?.advisors.find(
     (advisor) => advisor.id === featuredAdvisorId,
   );
@@ -1474,7 +1539,7 @@ export function QiuzhitaiApp() {
 
   return (
     <main
-      className={`oracle-shell ${pack && !working ? "has-pack" : ""} ${working ? "is-converging" : ""} ${selected?.status === "ready" ? "is-reading" : ""}`}
+      className={`oracle-shell ${pack && !working ? "has-pack" : ""} ${converging ? "is-converging" : ""} ${selected?.status === "ready" ? "is-reading" : ""}`}
       data-spectrum={spectrum.id}
       style={spectrumStyle}
     >
@@ -1531,44 +1596,31 @@ export function QiuzhitaiApp() {
 
       <section className="question-stage">
         <p className="eyebrow">ONE QUESTION · DIFFERENT TRUTHS</p>
-        <h1>
-          <FloatingText
-            mode="tidal"
-            text={
-              pack
-                ? working
-                  ? "答案尚未显形"
-                  : "神谕等待选择"
-                : "把你的困惑，交给不同的人生"
+        {converging ? (
+          <ConvergenceSigil
+            nodeCount={convergenceNodeCount}
+            onStop={
+              pack && working
+                ? () =>
+                    aborters.current.forEach((controller) =>
+                      controller.abort(),
+                    )
+                : undefined
             }
           />
-        </h1>
-        {pack && working ? (
-          <div
-            className="convergence-ritual"
-            role="status"
-            aria-label="黑洞正在折叠不同的人生"
-            aria-live="polite"
-          >
-            <span>CONVERGENCE</span>
-            <button
-              type="button"
-              aria-label="停止召唤"
-              onClick={() =>
-                aborters.current.forEach((controller) => controller.abort())
-              }
-            >
-              ×
-            </button>
-          </div>
-        ) : pack ? (
+        ) : (
+          <h1>
+            <FloatingText
+              key={pack ? "sealed" : "question"}
+              mode="tidal"
+              text={pack ? "神谕等待选择" : "把你的困惑，交给不同的人生"}
+            />
+          </h1>
+        )}
+        {pack && working ? null : pack ? (
           <div className="question-frozen">
             <p>{pack.question}</p>
-            {pack.problemMirror && (
-              <blockquote>
-                {pack.problemMirror}
-              </blockquote>
-            )}
+            {pack.problemMirror && <blockquote>{pack.problemMirror}</blockquote>}
             <button
               className="consult-button"
               onClick={beginNewQuestion}

@@ -84,6 +84,18 @@ async function createQuestion(
     await expect(
       page.getByRole("status", { name: /黑洞正在折叠不同的人生/ }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "把你的困惑，交给不同的人生",
+      }),
+    ).toHaveCount(0);
+    await expect(page.getByText("CONVERGENCE", { exact: true })).toHaveCount(0);
+    await expect(page.locator(".convergence-orbit")).toHaveCount(0);
+    await expect(page.locator(".convergence-vector")).toHaveCount(3);
+    expect(await page.locator(".convergence-node").count()).toBeGreaterThan(0);
+    expect(
+      await page.locator(".convergence-particle").count(),
+    ).toBeGreaterThanOrEqual(20);
     await expect(page.getByTestId("oracle-card")).toHaveCount(0);
   }
   await expect(page.locator(".spectrum-signature")).toContainText(
@@ -193,6 +205,34 @@ test("注册、登录、四卡、停止追问、决定、历史与账号闭环",
   await expect(
     page.locator(".oracle-verdict .floating-text__body").first(),
   ).toBeVisible();
+  const readingTypography = await page.locator(".reading-room").evaluate(
+    (room) => {
+      const styleFor = (selector: string) => {
+        const element = room.querySelector(selector);
+        if (!element) throw new Error(`阅读元素缺失：${selector}`);
+        const style = getComputedStyle(element);
+        return {
+          fontSize: Number.parseFloat(style.fontSize),
+          color: style.color,
+        };
+      };
+      return {
+        question: styleFor(".original-question"),
+        invocation: styleFor(".oracle-invocation"),
+        exegesis: styleFor(".oracle-exegesis p"),
+        inquiry: styleFor(".oracle-inquiry textarea"),
+        decision: styleFor(".decision-area textarea"),
+      };
+    },
+  );
+  expect(readingTypography.question.fontSize).toBeGreaterThanOrEqual(15);
+  expect(readingTypography.invocation.fontSize).toBeGreaterThanOrEqual(16);
+  expect(readingTypography.exegesis.fontSize).toBeGreaterThanOrEqual(16);
+  expect(readingTypography.inquiry.fontSize).toBeGreaterThanOrEqual(16);
+  expect(readingTypography.decision.fontSize).toBeGreaterThanOrEqual(16);
+  expect(readingTypography.invocation.color).not.toBe(
+    readingTypography.exegesis.color,
+  );
   await expect(page.locator(".oracle-identity-echo")).toHaveCount(0);
   await expect(page.locator(".reading-room")).toHaveCSS("border-top-width", "0px");
   await page.keyboard.press("Escape");
@@ -318,23 +358,34 @@ test("支持八卡并行、受控单卡失败移除和一张重抽", async ({ pa
   await expect(page.getByRole("button", { name: "＋ 造神" })).toBeVisible();
   await expect(picker).toBeInViewport();
   await page.getByRole("tab", { name: /指定显影/ }).click();
-  await expect(page.locator(".advisor-orb-grid > button")).toHaveCount(8);
+  await expect(page.locator(".advisor-orb-grid > button")).toHaveCount(11);
+  await expect(
+    page.getByRole("button", { name: "选择 曹操 视角" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "选择 任正非 视角" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "选择 张居正 视角" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "选择 字节 视角" }),
   ).toBeInViewport();
-  await page.getByRole("button", { name: "选择 阿里 视角" }).click();
-  await page.getByRole("button", { name: "选择 字节 视角" }).click();
+  await page.getByRole("button", { name: "选择 曹操 视角" }).click();
+  await page.getByRole("button", { name: "选择 任正非 视角" }).click();
+  await page.getByRole("button", { name: "选择 张居正 视角" }).click();
   await expect(page.locator(".manual-selection-note")).toContainText(
-    "已定 2 / 8",
+    "已定 3 / 8",
   );
   await page.getByRole("button", { name: "设置抽取方式" }).click();
   await createQuestion(
     page,
-    "这是用于验证指定阿里和字节两个组织视角的完整职场问题。",
+    "这是用于验证曹操、任正非和张居正三张新增官方视角的完整职场问题。",
   );
-  await expect(page.getByTestId("oracle-card")).toHaveCount(2);
-  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="alibaba"]')).toHaveCount(1);
-  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="bytedance"]')).toHaveCount(1);
+  await expect(page.getByTestId("oracle-card")).toHaveCount(3);
+  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="cao-cao"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="ren-zhengfei"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="oracle-card"][data-advisor-id="zhang-juzheng"]')).toHaveCount(1);
 
   await page.getByRole("button", { name: "提出一个新问题" }).click();
   await page.getByRole("button", { name: "设置抽取方式" }).click();
