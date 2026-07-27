@@ -1,0 +1,25 @@
+[Unit]
+Description=Zhihu Oracle Web
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/zhihu/current/runtime
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+User=root
+Group=root
+UMask=0077
+Environment=NODE_ENV=production
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3001
+EnvironmentFile=/etc/zhihu.env
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/zhihu/shared/data
+
+[Install]
+WantedBy=multi-user.target

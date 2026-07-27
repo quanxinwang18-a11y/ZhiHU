@@ -1,11 +1,15 @@
 import { database } from "@/db";
+import { clearQuoteInsight } from "@/lib/quote-insights";
 import { requireUser } from "@/lib/session";
 
 export async function DELETE(request: Request) {
   const authResult = await requireUser(request);
   if (authResult.error) return authResult.error;
-  database
-    .prepare("DELETE FROM advice_packs WHERE user_id = ?")
-    .run(authResult.user.id);
+  database.transaction(() => {
+    database
+      .prepare("DELETE FROM advice_packs WHERE user_id = ?")
+      .run(authResult.user.id);
+    clearQuoteInsight(authResult.user.id);
+  })();
   return Response.json({ ok: true });
 }

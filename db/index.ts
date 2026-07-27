@@ -110,6 +110,19 @@ export function ensureBusinessSchema() {
     CREATE UNIQUE INDEX IF NOT EXISTS advice_packs_one_active_user_idx
       ON advice_packs(user_id) WHERE status = 'generating';
 
+    CREATE TABLE IF NOT EXISTS quote_insights (
+      user_id TEXT PRIMARY KEY,
+      source_hash TEXT NOT NULL,
+      source_count INTEGER NOT NULL,
+      catalog_version TEXT NOT NULL,
+      prompt_version TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('generating', 'ready')),
+      result_json TEXT,
+      generated_at INTEGER,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS deity_images (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,

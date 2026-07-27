@@ -104,6 +104,20 @@ export const advicePacks = sqliteTable("advice_packs", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+export const quoteInsights = sqliteTable("quote_insights", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  sourceHash: text("source_hash").notNull(),
+  sourceCount: integer("source_count").notNull(),
+  catalogVersion: text("catalog_version").notNull(),
+  promptVersion: text("prompt_version").notNull(),
+  status: text("status", { enum: ["generating", "ready"] }).notNull(),
+  resultJson: text("result_json"),
+  generatedAt: integer("generated_at"),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export const deityImages = sqliteTable(
   "deity_images",
   {

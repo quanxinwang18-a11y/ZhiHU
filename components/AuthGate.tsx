@@ -5,6 +5,9 @@ import { FormEvent, useState } from "react";
 
 type Props = { onAuthenticated: () => void };
 
+const DEMO_USERNAME = "体验账号";
+const DEMO_PASSWORD = "Aa1!aaaa";
+
 const OracleAtmosphere = dynamic(
   () =>
     import("@/components/OracleAtmosphere").then(
@@ -15,12 +18,21 @@ const OracleAtmosphere = dynamic(
 
 export function AuthGate({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(DEMO_USERNAME);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  function changeMode(nextMode: "login" | "register") {
+    setMode(nextMode);
+    setError("");
+    setCode("");
+    setSent(false);
+    setUsername(nextMode === "login" ? DEMO_USERNAME : "");
+    setPassword(nextMode === "login" ? DEMO_PASSWORD : "");
+  }
 
   async function requestCode() {
     setError("");
@@ -73,14 +85,14 @@ export function AuthGate({ onAuthenticated }: Props) {
         <div className="auth-tabs" role="tablist">
           <button
             className={mode === "login" ? "active" : ""}
-            onClick={() => setMode("login")}
+            onClick={() => changeMode("login")}
             type="button"
           >
             登录
           </button>
           <button
             className={mode === "register" ? "active" : ""}
-            onClick={() => setMode("register")}
+            onClick={() => changeMode("register")}
             type="button"
           >
             注册
@@ -124,6 +136,11 @@ export function AuthGate({ onAuthenticated }: Props) {
             </label>
           )}
           {error && <p className="form-error">{error}</p>}
+          {mode === "login" && (
+            <p className="form-note demo-account-note">
+              共享体验账号已就位，请勿输入敏感信息
+            </p>
+          )}
           {sent && mode === "register" && (
             <p className="form-note">验证码已打印在运行本项目的后端控制台。</p>
           )}

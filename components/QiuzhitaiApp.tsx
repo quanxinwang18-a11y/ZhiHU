@@ -25,6 +25,7 @@ import {
 } from "@/components/DeityForge";
 import { DistillationPreview } from "@/components/DistillationPreview";
 import { FloatingText } from "@/components/FloatingText";
+import { HistoryEchoRift } from "@/components/HistoryEchoRift";
 import { advisors as advisorCatalog } from "@/lib/advisors";
 import {
   normalizeSpectrumId,
@@ -2123,6 +2124,17 @@ export function QiuzhitaiApp() {
       <DistillationPreview
         open={distillationOpen}
         onClose={() => setDistillationOpen(false)}
+      />
+
+      <HistoryEchoRift
+        active={
+          !pack &&
+          !converging &&
+          !controlsOpen &&
+          !historyOpen &&
+          !forgeOpen &&
+          !distillationOpen
+        }
       />
 
       {notice && (

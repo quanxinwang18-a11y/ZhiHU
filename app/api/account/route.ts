@@ -1,5 +1,6 @@
 import { verifyPassword } from "better-auth/crypto";
 import { database } from "@/db";
+import { clearQuoteInsight } from "@/lib/quote-insights";
 import { requireUser } from "@/lib/session";
 
 export async function DELETE(request: Request) {
@@ -27,6 +28,7 @@ export async function DELETE(request: Request) {
     database
       .prepare("DELETE FROM advice_packs WHERE user_id = ?")
       .run(authResult.user.id);
+    clearQuoteInsight(authResult.user.id);
     database
       .prepare("DELETE FROM custom_deities WHERE user_id = ?")
       .run(authResult.user.id);
