@@ -23,6 +23,7 @@ import {
   DeityForge,
   type CustomDeity,
 } from "@/components/DeityForge";
+import { DistillationPreview } from "@/components/DistillationPreview";
 import { FloatingText } from "@/components/FloatingText";
 import { advisors as advisorCatalog } from "@/lib/advisors";
 import {
@@ -225,6 +226,7 @@ function PerspectivePicker({
   onCountSelect,
   onAdvisorToggle,
   onForge,
+  onDistill,
   onEditDeity,
   onToggleDeityRandom,
   onDeleteDeity,
@@ -237,6 +239,7 @@ function PerspectivePicker({
   onCountSelect: (count: number) => void;
   onAdvisorToggle: (advisorId: string) => void;
   onForge: () => void;
+  onDistill: () => void;
   onEditDeity: (deity: CustomDeity) => void;
   onToggleDeityRandom: (deity: CustomDeity) => void;
   onDeleteDeity: (deity: CustomDeity) => void;
@@ -251,9 +254,14 @@ function PerspectivePicker({
           <small>ORACLE FORGE</small>
           <strong>视角封印</strong>
         </div>
-        <button type="button" onClick={onForge}>
-          ＋ 造神
-        </button>
+        <div className="perspective-creation-actions">
+          <button type="button" onClick={onDistill}>
+            ◇ 蒸馏
+          </button>
+          <button type="button" onClick={onForge}>
+            ＋ 造神
+          </button>
+        </div>
       </div>
 
       <div className="selection-mode" role="tablist" aria-label="显影方式">
@@ -572,6 +580,7 @@ export function QiuzhitaiApp() {
   const [selectedAdvisorIds, setSelectedAdvisorIds] = useState<string[]>([]);
   const [deities, setDeities] = useState<CustomDeity[]>([]);
   const [forgeOpen, setForgeOpen] = useState(false);
+  const [distillationOpen, setDistillationOpen] = useState(false);
   const [editingDeity, setEditingDeity] = useState<CustomDeity | null>(null);
   const [pack, setPack] = useState<Pack | null>(null);
   const [history, setHistory] = useState<Pack[]>([]);
@@ -778,7 +787,9 @@ export function QiuzhitaiApp() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
-      if (featuredAdvisorId) {
+      if (distillationOpen) {
+        setDistillationOpen(false);
+      } else if (featuredAdvisorId) {
         setFeaturedAdvisorId(null);
       } else {
         setSelectedAdvisor(null);
@@ -795,7 +806,7 @@ export function QiuzhitaiApp() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pagehide", onPageHide);
     };
-  }, [featuredAdvisorId, pack?.id, working]);
+  }, [distillationOpen, featuredAdvisorId, pack?.id, working]);
 
   useEffect(() => {
     const finishedSummoning = wasWorking.current && !working && Boolean(pack);
@@ -1716,6 +1727,10 @@ export function QiuzhitaiApp() {
                     setEditingDeity(null);
                     setForgeOpen(true);
                   }}
+                  onDistill={() => {
+                    setControlsOpen(false);
+                    setDistillationOpen(true);
+                  }}
                   onEditDeity={(deity) => {
                     setEditingDeity(deity);
                     setForgeOpen(true);
@@ -1768,6 +1783,10 @@ export function QiuzhitaiApp() {
                     onForge={() => {
                       setEditingDeity(null);
                       setForgeOpen(true);
+                    }}
+                    onDistill={() => {
+                      setControlsOpen(false);
+                      setDistillationOpen(true);
                     }}
                     onEditDeity={(deity) => {
                       setEditingDeity(deity);
@@ -2099,6 +2118,11 @@ export function QiuzhitaiApp() {
           setEditingDeity(null);
         }}
         onSaved={handleDeitySaved}
+      />
+
+      <DistillationPreview
+        open={distillationOpen}
+        onClose={() => setDistillationOpen(false)}
       />
 
       {notice && (

@@ -281,8 +281,10 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .perspective-commandbar { position: sticky; z-index: 4; top: -22px; margin: -22px -22px 20px; padding: 19px 22px 15px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(180deg, color-mix(in srgb, var(--ink-deep) 98%, transparent) 0 78%, transparent); backdrop-filter: blur(20px); }
 .perspective-commandbar small { display: block; margin-bottom: 4px; color: #514b43; font: 6px var(--sans); letter-spacing: .25em; }
 .perspective-commandbar strong { color: #aaa195; font: 400 12px var(--serif); letter-spacing: .12em; }
-.perspective-commandbar > button { min-width: 94px; padding: 9px 13px; border: 1px solid color-mix(in srgb, var(--spectrum-primary) 20%, transparent); background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-primary) 12%, transparent), transparent 72%); color: var(--gold); cursor: pointer; font: 10px var(--serif); letter-spacing: .14em; transition: border-color .45s var(--ease-oracle), color .45s var(--ease-oracle), box-shadow .45s var(--ease-oracle); }
-.perspective-commandbar > button:hover { border-color: color-mix(in srgb, var(--spectrum-primary) 42%, transparent); color: var(--bright); box-shadow: 0 0 24px var(--spectral-haze); }
+.perspective-creation-actions { display: flex; align-items: center; gap: 7px; }
+.perspective-creation-actions button { min-width: 76px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--spectrum-primary) 14%, transparent); background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-primary) 8%, transparent), transparent 72%); color: #786f63; cursor: pointer; font: 10px var(--serif); letter-spacing: .12em; transition: border-color .45s var(--ease-oracle), color .45s var(--ease-oracle), box-shadow .45s var(--ease-oracle); }
+.perspective-creation-actions button:last-child { border-color: color-mix(in srgb, var(--spectrum-primary) 22%, transparent); color: var(--gold); }
+.perspective-creation-actions button:hover { border-color: color-mix(in srgb, var(--spectrum-primary) 42%, transparent); color: var(--bright); box-shadow: 0 0 24px var(--spectral-haze); }
 .selection-mode button { min-width: 122px; padding: 0 0 10px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: #5d574f; cursor: pointer; font: 10px var(--serif); letter-spacing: .11em; transition: color .45s var(--ease-oracle), border-color .45s var(--ease-oracle); }
 .selection-mode button small { display: block; margin-bottom: 5px; color: #48433c; font: 6px var(--sans); letter-spacing: .24em; }
 .selection-mode button.active { border-color: color-mix(in srgb, var(--spectrum-primary) 36%, transparent); color: var(--bright); text-shadow: 0 0 18px color-mix(in srgb, var(--spectrum-primary) 26%, transparent); }
@@ -356,6 +358,36 @@ button { color: inherit; transition: color .6s var(--ease-oracle), border-color 
 .deity-forge form > footer button { padding: 12px 5px; border: 0; background: transparent; color: #6c655b; cursor: pointer; font: 9px var(--sans); letter-spacing: .12em; }
 .deity-forge form > footer .forge-submit { min-width: 146px; color: var(--bone); background: radial-gradient(ellipse, color-mix(in srgb, var(--spectrum-primary) 24%, transparent), transparent 72%); }
 .deity-forge form > footer button:disabled { opacity: .35; cursor: default; }
+
+/* Distillation preview */
+.distillation-layer { position: fixed; z-index: 148; inset: 0; display: grid; place-items: center; overflow: hidden; background: radial-gradient(ellipse at 50% 46%, color-mix(in srgb, var(--spectrum-primary) 8%, #080705) 0, var(--ink-deep) 43%, #020202 100%); animation: manuscriptIn .55s var(--ease-oracle); isolation: isolate; }
+.distillation-layer::before { content: ""; position: absolute; inset: -22%; opacity: .28; background: repeating-linear-gradient(106deg, transparent 0 11.5%, color-mix(in srgb, var(--spectrum-primary) 5%, transparent) 11.7%, transparent 12% 23%); transform: rotate(-3deg); mask-image: radial-gradient(ellipse, #000, transparent 68%); }
+.distillation-close { position: absolute; z-index: 4; right: clamp(24px, 4vw, 64px); top: clamp(20px, 4vw, 52px); width: 42px; height: 42px; border: 0; background: transparent; color: #6d665c; cursor: pointer; font: 28px var(--serif); transition: color .4s, text-shadow .4s; }
+.distillation-close:hover { color: var(--bright); text-shadow: 0 0 18px var(--spectral-haze); }
+.distillation-field { position: absolute; left: 50%; top: 48%; width: min(760px, 82vw); height: min(560px, 62vh); transform: translate(-50%,-50%); }
+.distillation-axis { position: absolute; left: 50%; top: 8%; width: 1px; height: 78%; background: linear-gradient(transparent, color-mix(in srgb, var(--spectrum-primary) 32%, transparent) 44%, color-mix(in srgb, var(--spectrum-secondary) 68%, transparent) 82%, transparent); box-shadow: 0 0 18px var(--spectral-haze); }
+.distillation-stream { position: absolute; left: 50%; top: 9%; width: 45%; height: 72%; }
+.distillation-stream.stream-left { transform: translateX(-100%); }
+.distillation-stream.stream-right { transform: scaleX(-1); transform-origin: left center; }
+.distillation-stream::before { content: ""; position: absolute; inset: 0; border-bottom: 1px solid color-mix(in srgb, var(--spectrum-primary) 24%, transparent); transform: skewY(-32deg); transform-origin: right bottom; filter: drop-shadow(0 0 8px var(--spectral-haze)); }
+.distillation-stream i { --distill-left: 12%; --distill-top: 10%; --distill-size: 2px; --distill-duration: 2.3s; --distill-delay: -.2s; --distill-x: 290px; --distill-y: 350px; position: absolute; left: var(--distill-left); top: var(--distill-top); width: var(--distill-size); aspect-ratio: 1; background: color-mix(in srgb, var(--spectrum-secondary) 78%, var(--spectrum-primary)); box-shadow: 0 0 12px var(--spectrum-primary), 0 0 28px var(--spectral-haze); animation: distillationFall var(--distill-duration) var(--distill-delay) ease-in infinite; }
+.distillation-stream i:nth-child(1) { --distill-left: 12%; --distill-top: 7%; --distill-size: 2px; --distill-duration: 2.32s; --distill-delay: -.19s; --distill-x: 290px; --distill-y: 350px; }
+.distillation-stream i:nth-child(2) { --distill-left: 22%; --distill-top: 14%; --distill-size: 2.5px; --distill-duration: 2.44s; --distill-delay: -.38s; --distill-x: 264px; --distill-y: 346px; }
+.distillation-stream i:nth-child(3) { --distill-left: 32%; --distill-top: 21%; --distill-size: 3px; --distill-duration: 2.56s; --distill-delay: -.57s; --distill-x: 238px; --distill-y: 342px; }
+.distillation-stream i:nth-child(4) { --distill-left: 42%; --distill-top: 28%; --distill-size: 3.5px; --distill-duration: 2.68s; --distill-delay: -.76s; --distill-x: 212px; --distill-y: 338px; }
+.distillation-stream i:nth-child(5) { --distill-left: 52%; --distill-top: 35%; --distill-size: 3px; --distill-duration: 2.8s; --distill-delay: -.95s; --distill-x: 186px; --distill-y: 334px; }
+.distillation-stream i:nth-child(6) { --distill-left: 62%; --distill-top: 42%; --distill-size: 3.5px; --distill-duration: 2.92s; --distill-delay: -1.14s; --distill-x: 160px; --distill-y: 330px; }
+.distillation-stream i:nth-child(7) { --distill-left: 72%; --distill-top: 49%; --distill-size: 4px; --distill-duration: 3.04s; --distill-delay: -1.33s; --distill-x: 134px; --distill-y: 326px; }
+.distillation-stream i:nth-child(8) { --distill-left: 82%; --distill-top: 56%; --distill-size: 4.5px; --distill-duration: 3.16s; --distill-delay: -1.52s; --distill-x: 108px; --distill-y: 322px; }
+.distillation-seal { position: absolute; left: 50%; bottom: 7%; width: 13px; height: 13px; border: 1px solid color-mix(in srgb, var(--spectrum-secondary) 72%, transparent); background: color-mix(in srgb, var(--spectrum-primary) 18%, transparent); box-shadow: 0 0 18px var(--spectrum-primary), 0 0 52px var(--spectral-haze); transform: translateX(-50%) rotate(45deg); animation: distillationSeal 2.3s ease-in-out infinite; }
+.distillation-copy { position: relative; z-index: 2; display: grid; justify-items: center; transform: translateY(-1.5vh); text-align: center; }
+.distillation-copy > p { margin: 0 0 18px; color: color-mix(in srgb, var(--spectrum-primary) 72%, #776e61); font: 8px var(--sans); letter-spacing: .42em; }
+.distillation-copy h2 { margin: 0; color: var(--bone); font: 400 clamp(54px, 7vw, 92px) var(--serif); letter-spacing: .32em; text-indent: .32em; text-shadow: 0 0 42px color-mix(in srgb, var(--spectrum-primary) 16%, transparent); }
+.distillation-copy > span { margin-top: 21px; color: #8c8377; font: 12px var(--serif); letter-spacing: .28em; }
+.distillation-copy button { margin-top: 148px; padding: 10px 18px; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--spectrum-primary) 28%, transparent); background: transparent; color: #6f685f; cursor: pointer; font: 9px var(--serif); letter-spacing: .16em; transition: color .4s, border-color .4s; }
+.distillation-copy button:hover { border-color: var(--gold); color: var(--bright); }
+@keyframes distillationFall { 0% { opacity: 0; transform: translate(0,0); } 18% { opacity: .9; } 82% { opacity: .7; } 100% { opacity: 0; transform: translate(var(--distill-x), var(--distill-y)); } }
+@keyframes distillationSeal { 0%,100% { opacity: .55; transform: translateX(-50%) rotate(45deg) scale(.72); } 50% { opacity: 1; transform: translateX(-50%) rotate(135deg) scale(1.08); } }
 
 .custom-deity-sigil { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 43%, color-mix(in srgb, var(--card-accent) 18%, transparent), transparent 38%), radial-gradient(circle at 50% 48%, #17140f, #030303 72%); }
 .custom-deity-sigil::before, .custom-deity-sigil i { content: ""; position: absolute; width: 56%; aspect-ratio: 1; border: 1px solid color-mix(in srgb, var(--card-accent) 34%, transparent); transform: rotate(45deg); }
