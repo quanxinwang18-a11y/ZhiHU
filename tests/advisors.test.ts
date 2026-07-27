@@ -7,9 +7,9 @@ import {
 import { makeMockOpinion } from "@/lib/mock-ai";
 
 describe("首批顾问与 Mock 意见", () => {
-  it("包含十一个立场不同且素材完整的顾问", () => {
-    expect(advisors).toHaveLength(11);
-    expect(new Set(advisors.map((advisor) => advisor.id)).size).toBe(11);
+  it("包含十二个立场不同且素材完整的顾问", () => {
+    expect(advisors).toHaveLength(12);
+    expect(new Set(advisors.map((advisor) => advisor.id)).size).toBe(12);
     advisors.forEach((advisor) => {
       expect(advisor.image).toMatch(/\.webp$/);
       expect(advisor.lens.length).toBeGreaterThan(15);
@@ -50,12 +50,15 @@ describe("首批顾问与 Mock 意见", () => {
     const caocao = makeMockOpinion("cao-cao", question);
     const renzhengfei = makeMockOpinion("ren-zhengfei", question);
     const zhangjuzheng = makeMockOpinion("zhang-juzheng", question);
+    const iflytek = makeMockOpinion("iflytek", question);
     expect(yiming).not.toBe(jobs);
     expect(yiming).toContain("事实");
     expect(jobs).toContain("标准");
     expect(caocao).toContain("人、势与时机");
     expect(renzhengfei).toContain("主航道");
     expect(zhangjuzheng).toContain("制度不立");
+    expect(iflytek).toContain("顶天");
+    expect(iflytek).toContain("大波浪");
     expect(yiming).not.toContain("第一点");
   });
 });

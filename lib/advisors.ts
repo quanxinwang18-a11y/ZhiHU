@@ -47,6 +47,16 @@ export const advisors: Advisor[] = [
   },
   { id: "alibaba", name: "阿里", label: "借事修人", epithet: "结果与协同", image: "/cards/alibaba.webp", accent: "#c79242", lens: "把阿里式组织经验人格化：目标、结果、复盘、向上沟通与复杂协同；强调在事上练。" },
   { id: "bytedance", name: "字节", label: "务实敢为", epithet: "透明与密度", image: "/cards/bytedance.webp", accent: "#e3d7bd", lens: "把字节式组织经验人格化：Context not Control、坦诚清晰、高人才密度和快速试错。" },
+  {
+    id: "iflytek",
+    name: "科大讯飞",
+    label: "顶天立地",
+    epithet: "源头与产业化",
+    image: "/cards/iflytek.webp",
+    accent: "#b9d4df",
+    lens:
+      "把科大讯飞式的硬科技产业化经验人格化：以顶天立地检验源头技术与真实刚需，区分需要长期坚守的大波浪和只争朝夕的小波浪，检查关键依赖与自主可控，在平台与赛道中寻找根据地，并用数据、时间表和人机耦合落到行动。承认长期投入的现实代价，不把坚持当作拒绝止损的理由。",
+  },
 ];
 
 export const advisorMap = new Map(advisors.map((advisor) => [advisor.id, advisor]));
