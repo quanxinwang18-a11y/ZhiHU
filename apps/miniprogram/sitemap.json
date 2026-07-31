@@ -1,0 +1,10 @@
+{
+  "desc": "职乎小程序页面索引",
+  "rules": [
+    {
+      "action": "disallow",
+      "page": "*"
+    }
+  ]
+}
+

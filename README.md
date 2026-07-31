@@ -6,7 +6,11 @@
 
 > 人物和组织卡牌均为基于公开思想的 AI 模拟，不代表本人、企业或组织的真实意见。自定义神明也只是执行用户所写神格提示词的 AI 角色，不构成专业建议。
 
-详细的产品流程、实现边界、数据模型与 API 说明见 [职乎-产品需求与交互设计.md](./outputs/职乎-产品需求与交互设计.md)。
+详细的当前产品流程、实现边界、数据模型与 API 说明见 [职乎-产品需求与交互设计.md](./outputs/职乎-产品需求与交互设计.md)。
+
+面向微信小程序长期产品化的已确认决策，包括核心用户、三卡体验、Nuwa 人格工厂、隐私边界、私有人格和实施顺序，见 [职乎-产品决策记录.md](./outputs/职乎-产品决策记录.md)。其中描述的是目标状态，不代表已经实现；当前阶段明确不做自定义模型 URL、用户 API Key 或 BYOK。
+
+原生微信小程序纵向切片已经在 [`apps/miniprogram`](./apps/miniprogram) 开始建设。当前包含无需后端即可运行的 Mock 三卡闭环、本地历史，以及与无状态 `/api/v2/advice-runs/stream` 接口联调的分块传输实现。移动端交互保留了 Web 的“投入—凝结—显影—阅读—收束”叙事：回答先在后台生成并封存，用户逐张翻牌、聚焦身份，再进入可横向切换的全屏判词；运行方式和隐私边界见 [小程序开发说明](./apps/miniprogram/README.md)。
 
 ## 项目定位
 
@@ -180,6 +184,7 @@ pnpm test:smoke-real
 ```bash
 pnpm lint
 pnpm test:unit
+pnpm typecheck:miniprogram
 pnpm test:e2e
 pnpm build
 ```
@@ -210,6 +215,7 @@ SQLite 启用 WAL、外键和 5 秒 busy timeout。当前设计适合单机或�
 
 ```text
 app/          页面与 Route Handlers
+apps/         原生微信小程序纵向切片
 components/   登录、主应用、3D 场景、造神、蒸馏占位、历史回声
 db/           SQLite 连接与 Drizzle schema
 drizzle/      增量 SQL 迁移记录

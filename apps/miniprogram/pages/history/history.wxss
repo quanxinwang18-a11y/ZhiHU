@@ -1,0 +1,151 @@
+.history-page {
+  min-height: 100vh;
+  padding: 44rpx 32rpx 80rpx;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 90% 0, rgba(177, 132, 68, 0.13), transparent 28%),
+    #080808;
+}
+
+.history-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.history-kicker,
+.history-title {
+  display: block;
+}
+
+.history-kicker {
+  color: #96794f;
+  font-size: 18rpx;
+  letter-spacing: 5rpx;
+}
+
+.history-title {
+  margin-top: 12rpx;
+  color: #eee3d3;
+  font-family: "STSong", serif;
+  font-size: 44rpx;
+}
+
+.clear-button,
+.delete-button {
+  margin: 0;
+  color: #8e766d;
+  font-size: 22rpx;
+  background: transparent;
+}
+
+.history-intro {
+  display: block;
+  margin-top: 20rpx;
+  color: #656059;
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 190rpx;
+}
+
+.empty-symbol {
+  color: #554b3b;
+  font-size: 90rpx;
+}
+
+.empty-title {
+  margin-top: 26rpx;
+  color: #bcb09f;
+  font-size: 28rpx;
+}
+
+.empty-caption {
+  margin-top: 14rpx;
+  color: #5c5751;
+  font-size: 21rpx;
+}
+
+.history-list {
+  margin-top: 42rpx;
+}
+
+.history-item {
+  margin-bottom: 20rpx;
+  overflow: hidden;
+  border: 1rpx solid rgba(225, 203, 167, 0.12);
+  border-radius: 25rpx;
+  background: rgba(24, 23, 21, 0.86);
+}
+
+.history-summary {
+  padding: 28rpx;
+}
+
+.history-meta {
+  display: flex;
+  justify-content: space-between;
+  color: #6d675f;
+  font-size: 19rpx;
+}
+
+.history-question {
+  display: block;
+  margin-top: 18rpx;
+  color: #ded4c6;
+  font-size: 27rpx;
+  line-height: 1.65;
+}
+
+.persona-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 20rpx;
+}
+
+.persona-chip {
+  padding: 7rpx 13rpx;
+  border-radius: 999rpx;
+  color: #8e7a5a;
+  font-size: 18rpx;
+  background: rgba(184, 143, 77, 0.08);
+}
+
+.history-detail {
+  padding: 0 28rpx 28rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.history-card,
+.history-synthesis {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.history-card-name,
+.history-card-body {
+  display: block;
+}
+
+.history-card-name {
+  color: #aa8a5b;
+  font-size: 21rpx;
+}
+
+.history-card-body {
+  margin-top: 12rpx;
+  color: #afa79b;
+  font-size: 23rpx;
+  line-height: 1.75;
+}
+
+.delete-button {
+  margin-top: 22rpx;
+}
+
