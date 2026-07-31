@@ -1,4 +1,29 @@
-<view class="page-shell safe-bottom phase-{{phase}}">
+<view class="page-shell safe-bottom phase-{{phase}} spectrum-{{spectrumId}} energy-{{questionEnergy}} {{focusedCard ? 'is-reading' : ''}}">
+  <image
+    class="nebula-veil"
+    src="/assets/atmosphere/nebula-veil.webp"
+    mode="aspectFill"
+    aria-hidden="true"
+  ></image>
+  <canvas
+    id="oracle-sky"
+    type="2d"
+    class="oracle-sky"
+    aria-hidden="true"
+  ></canvas>
+  <view class="cosmos" aria-hidden="true">
+    <view class="nebula-cloud nebula-cloud-primary"></view>
+    <view class="nebula-cloud nebula-cloud-secondary"></view>
+    <view class="nebula-cloud nebula-cloud-violet"></view>
+    <view class="nebula-cloud nebula-cloud-jade"></view>
+    <view class="spectral-orbit spectral-orbit-one"></view>
+    <view class="spectral-orbit spectral-orbit-two"></view>
+    <view class="cosmic-horizon">
+      <view class="cosmic-horizon-ring"></view>
+      <view class="cosmic-horizon-core"></view>
+    </view>
+    <view class="cosmos-vignette"></view>
+  </view>
   <view class="star-field" aria-hidden="true">
     <view class="star star-one"></view>
     <view class="star star-two"></view>
@@ -22,70 +47,62 @@
   </view>
 
   <view class="content">
-    <block wx:if="{{phase === 'idle'}}">
-      <view class="hero">
-        <view class="eyebrow-row">
+    <block wx:if="{{phase === 'idle' || phase === 'ingesting'}}">
+      <view class="idle-scene">
+        <view class="hero">
           <text class="eyebrow">ONE QUESTION · DIFFERENT TRUTHS</text>
-          <text class="mode-chip">{{transportLabel}}</text>
+          <text class="hero-title">把你的困惑，</text>
+          <text class="hero-title hero-title-indent">交给不同的人生。</text>
         </view>
-        <text class="hero-title">把你的困惑，</text>
-        <text class="hero-title hero-title-indent">交给不同的人生。</text>
-        <text class="hero-description">这里没有标准答案。三种互不讨好的判断尺度，会替你照见事实、风险与行动出口。</text>
-      </view>
 
-      <view class="question-stage">
-        <view class="question-panel">
-          <textarea
-            class="question-input"
-            value="{{question}}"
-            maxlength="1000"
-            auto-height="{{false}}"
-            placeholder="写下一件此刻真正困住你的职场问题……"
-            placeholder-class="question-placeholder"
-            bindinput="onQuestionInput"
-          ></textarea>
-          <view class="question-meta">
-            <text class="privacy-note">仅本地保存 · 演示后端不落正文</text>
-            <text class="counter">{{charCount}} / 1000</text>
+        <view class="question-stage">
+          <view class="question-panel">
+            <view class="question-focus-line question-focus-line-top"></view>
+            <textarea
+              class="question-input"
+              value="{{question}}"
+              maxlength="1000"
+              auto-height="{{false}}"
+              placeholder="…"
+              placeholder-class="question-placeholder"
+              bindinput="onQuestionInput"
+            ></textarea>
+            <view class="question-focus-line question-focus-line-bottom"></view>
+            <text wx:if="{{charCount > 850}}" class="question-limit">{{charCount}} / 1000</text>
+            <text wx:if="{{error}}" class="error-text">{{error}}</text>
           </view>
-          <text wx:if="{{error}}" class="error-text">{{error}}</text>
-        </view>
 
-        <view class="sample-list" wx:if="{{!question}}">
           <button
-            wx:for="{{sampleQuestions}}"
-            wx:key="*this"
-            class="sample"
-            data-question="{{item}}"
-            bindtap="onUseSample"
+            class="horizon-trigger {{canSubmit ? 'is-ready' : ''}} {{isHoldingQuestion ? 'is-holding' : ''}}"
+            disabled="{{!canSubmit}}"
+            bindtouchstart="onQuestionHoldStart"
+            bindtouchend="onQuestionHoldEnd"
+            bindtouchcancel="onQuestionHoldEnd"
+            aria-label="长按投入问题"
           >
-            <text class="sample-mark">↗</text>
-            <text>{{item}}</text>
+            <view class="horizon-ring horizon-ring-outer"></view>
+            <view class="horizon-ring horizon-ring-inner"></view>
+            <view class="gravity-feeds" aria-hidden="true">
+              <view class="gravity-feed gravity-feed-01"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-02"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-03"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-04"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-05"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-06"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-07"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-08"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-09"><view class="gravity-feed-ray"></view></view>
+              <view class="gravity-feed gravity-feed-10"><view class="gravity-feed-ray"></view></view>
+            </view>
+            <view class="horizon-core"></view>
           </button>
+          <text wx:if="{{canSubmit}}" class="horizon-label">{{isHoldingQuestion ? 'CROSSING THE HORIZON' : 'HOLD TO CROSS'}}</text>
         </view>
-
-        <button
-          class="horizon-trigger {{canSubmit ? 'is-ready' : ''}}"
-          disabled="{{!canSubmit}}"
-          bindtap="onSubmit"
-          aria-label="投入问题并显影三张判断卡"
-        >
-          <view class="horizon-ring horizon-ring-outer"></view>
-          <view class="horizon-ring horizon-ring-inner"></view>
-          <view class="horizon-stream horizon-stream-one"></view>
-          <view class="horizon-stream horizon-stream-two"></view>
-          <view class="horizon-stream horizon-stream-three"></view>
-          <view class="horizon-core">
-            <text>问</text>
-          </view>
-        </button>
-        <text class="horizon-label">{{canSubmit ? '轻触，将问题投入判断场' : '写满 10 个字，边界才会打开'}}</text>
       </view>
     </block>
 
     <block wx:else>
       <view class="session-intro">
-        <text class="session-kicker">THE QUESTION · 所问之事</text>
         <text class="frozen-question">{{question}}</text>
         <view class="session-rule"></view>
       </view>
@@ -100,27 +117,16 @@
           <view class="convergence-node node-three"></view>
           <view class="convergence-core"></view>
         </view>
-        <text class="planning-title">正在折叠问题中的不同可能</text>
-        <text class="planning-caption">不是随机给答案，而是寻找三个互补功能位</text>
-        <button class="ritual-stop" bindtap="onStop">停止</button>
+        <button class="ritual-stop" bindtap="onStop" aria-label="停止">×</button>
       </view>
 
       <view wx:if="{{cards.length}}" class="cards-section">
         <view class="section-heading">
-          <view>
-            <text class="section-kicker">SEALED ORACLES</text>
-            <text class="section-title">
-              {{phase === 'ready' ? '三枚判断已经抵达' : '封印正在逐一形成'}}
-            </text>
-          </view>
-          <button wx:if="{{isRunning}}" class="text-button" bindtap="onStop">停止</button>
+          <text class="section-kicker">SEALED ORACLES</text>
+          <button wx:if="{{isRunning}}" class="text-button" bindtap="onStop" aria-label="停止">×</button>
         </view>
 
         <view class="reveal-progress">
-          <view class="progress-copy">
-            <text>已凝结 {{completedCardCount}} / {{cards.length}}</text>
-            <text>已显影 {{revealedCount}} / {{completedCardCount}}</text>
-          </view>
           <view class="progress-track">
             <view class="progress-segment {{cards[0].status === 'ready' ? 'is-complete' : ''}} {{cards[0].isRevealed ? 'is-revealed' : ''}}"></view>
             <view class="progress-segment {{cards[1].status === 'ready' ? 'is-complete' : ''}} {{cards[1].isRevealed ? 'is-revealed' : ''}}"></view>
@@ -138,41 +144,85 @@
           <button
             wx:for="{{cards}}"
             wx:key="id"
-            class="oracle-card oracle-card-{{item.status}} {{item.isRevealed ? 'is-revealed' : 'is-sealed'}} arrival-{{index}}"
+            class="oracle-card tone-{{item.tone}} constellation-{{item.constellation}} oracle-card-{{item.status}} {{item.isRevealed ? 'is-revealed' : 'is-sealed'}} {{enteringCardId === item.id ? 'is-entering' : ''}} arrival-{{index}}"
             data-index="{{index}}"
             bindtap="onCardTap"
             aria-label="{{item.isRevealed ? '进入' + item.persona.displayName + '的判断' : '显影第' + (index + 1) + '张判断卡'}}"
           >
             <view class="card-flipper">
               <view class="card-face card-front">
+                <view class="card-edge-frame"></view>
+                <view class="card-corner corner-nw"></view>
+                <view class="card-corner corner-ne"></view>
+                <view class="card-corner corner-sw"></view>
+                <view class="card-corner corner-se"></view>
                 <text class="card-index">{{item.ordinal}}</text>
+                <text class="card-archive">ZHIHU / {{item.ordinal}}</text>
                 <view class="card-grain"></view>
+                <view class="card-constellation">
+                  <view class="constellation-line line-one"></view>
+                  <view class="constellation-line line-two"></view>
+                  <view class="constellation-line line-three"></view>
+                  <view class="constellation-star constellation-star-one"></view>
+                  <view class="constellation-star constellation-star-two"></view>
+                  <view class="constellation-star constellation-star-three"></view>
+                  <view class="constellation-star constellation-star-four"></view>
+                </view>
                 <view class="card-seal">
+                  <view class="seal-orbit seal-orbit-one"></view>
+                  <view class="seal-orbit seal-orbit-two"></view>
                   <view class="seal-circle seal-circle-outer"></view>
                   <view class="seal-circle seal-circle-inner"></view>
+                  <view class="seal-diamond"></view>
                   <view class="seal-axis seal-axis-one"></view>
                   <view class="seal-axis seal-axis-two"></view>
-                  <text class="seal-mark">
-                    {{item.status === 'failed' ? '×' : item.status === 'ready' ? '触' : '·'}}
-                  </text>
+                  <view class="seal-gem"></view>
+                  <text class="seal-glyph">{{item.sealGlyph}}</text>
                 </view>
                 <view class="card-front-foot">
                   <text class="sealed-name">{{item.status === 'failed' ? '封印未成' : '无名之牌'}}</text>
                   <text class="sealed-caption">
-                    {{item.status === 'ready' ? 'TOUCH TO REVEAL' : item.status === 'failed' ? 'CONNECTION LOST' : 'FORMING'}}
+                    {{item.status === 'failed' ? 'CONNECTION LOST' : item.status === 'ready' ? 'THE SEALED VOICE' : 'FORMING'}}
                   </text>
                 </view>
               </view>
 
               <view class="card-face card-back">
+                <view class="card-edge-frame"></view>
+                <view class="card-corner corner-nw"></view>
+                <view class="card-corner corner-ne"></view>
+                <view class="card-corner corner-sw"></view>
+                <view class="card-corner corner-se"></view>
                 <text class="card-index">{{item.ordinal}}</text>
-                <view class="card-aura"></view>
-                <view class="persona-sigil">
-                  <view class="persona-ring"></view>
-                  <text>{{item.monogram}}</text>
+                <text class="card-archive">ORACLE / {{item.sealGlyph}}</text>
+                <view class="card-grain"></view>
+                <view class="portrait-field">
+                  <image
+                    wx:if="{{item.imageSrc}}"
+                    class="portrait-image"
+                    src="{{item.imageSrc}}"
+                    mode="aspectFill"
+                    aria-hidden="true"
+                  ></image>
+                  <view wx:else class="portrait-silhouette">
+                    <view class="portrait-head"></view>
+                    <view class="portrait-shoulders"></view>
+                    <text class="portrait-monogram">{{item.monogram}}</text>
+                  </view>
+                  <view class="portrait-ray portrait-ray-one"></view>
+                  <view class="portrait-ray portrait-ray-two"></view>
+                  <view class="portrait-ray portrait-ray-three"></view>
+                  <view class="portrait-halo portrait-halo-outer"></view>
+                  <view class="portrait-halo portrait-halo-inner"></view>
+                  <view class="portrait-diamond"></view>
+                  <view class="portrait-stars">
+                    <view class="portrait-star portrait-star-one"></view>
+                    <view class="portrait-star portrait-star-two"></view>
+                    <view class="portrait-star portrait-star-three"></view>
+                  </view>
                 </view>
                 <view class="card-identity">
-                  <text class="slot-label">{{item.slotLabel}}</text>
+                  <text class="identity-slot">{{item.slotLabel}} · {{item.ordinal}}</text>
                   <text class="persona-name">{{item.persona.displayName}}</text>
                   <text class="perspective-label">{{item.persona.perspectiveLabel}}</text>
                 </view>
@@ -181,14 +231,6 @@
             </view>
           </button>
         </scroll-view>
-
-        <view class="interaction-guide">
-          <view class="guide-line guide-line-left"></view>
-          <text wx:if="{{revealedCount === 0}}">封印完成后，轻触卡牌显影身份</text>
-          <text wx:elif="{{!allCardsRevealed}}">再次轻触已显影的卡，进入它的判词</text>
-          <text wx:else>三种判断已经展开；左右滑动阅读，或继续形成行动</text>
-          <view class="guide-line guide-line-right"></view>
-        </view>
       </view>
 
       <view wx:if="{{phase === 'stopped' || phase === 'error'}}" class="interrupted-panel">
@@ -199,21 +241,14 @@
       <view wx:if="{{phase === 'ready' && allCardsRevealed}}" class="exit-panel">
         <text class="exit-kicker">OPTIONAL EXIT</text>
         <text class="exit-title">三种声音之后，只带走一个下一步</text>
-        <text class="exit-description">这不是必须完成的复盘。只有当你想把判断落回现实，才选择一个出口。</text>
         <view class="exit-actions">
           <button class="exit-button" data-mode="decision" bindtap="onSynthesize">
             <text class="exit-number">01</text>
-            <view>
-              <text class="exit-button-title">形成行动判断</text>
-              <text class="exit-button-caption">压缩成一个可逆、可验证的下一步</text>
-            </view>
+            <text class="exit-button-title">形成判断</text>
           </button>
           <button class="exit-button" data-mode="communication" bindtap="onSynthesize">
             <text class="exit-number">02</text>
-            <view>
-              <text class="exit-button-title">组织沟通话术</text>
-              <text class="exit-button-caption">把想法变成一次可以开口的沟通</text>
-            </view>
+            <text class="exit-button-title">组织表达</text>
           </button>
         </view>
       </view>
@@ -228,7 +263,7 @@
         wx:if="{{phase === 'ready' || phase === 'stopped' || phase === 'error'}}"
         class="restart-button"
         bindtap="onReset"
-      >提出另一个问题</button>
+      >新问</button>
     </block>
 
     <view class="footer-note">
@@ -236,33 +271,41 @@
     </view>
   </view>
 
-  <view wx:if="{{phase === 'ingesting'}}" class="ingestion-layer">
-    <text class="ingestion-label">CROSSING THE EVENT HORIZON</text>
-    <text class="ingestion-question">{{question}}</text>
-    <view class="ingestion-horizon">
-      <view class="ingestion-ring ingestion-ring-one"></view>
-      <view class="ingestion-ring ingestion-ring-two"></view>
-      <view class="ingestion-ring ingestion-ring-three"></view>
-      <view class="ingestion-core"></view>
-    </view>
-    <text class="ingestion-caption">问题正在越过边界</text>
-    <button class="ritual-stop ingestion-stop" bindtap="onStop">撤回</button>
-  </view>
-
-  <view wx:if="{{featuredCard}}" class="featured-layer" bindtap="onDismissFeatured">
+  <view wx:if="{{featuredCard}}" class="featured-layer tone-{{featuredCard.tone}} {{featuredCardEntering ? 'is-entering' : ''}}" bindtap="onDismissFeatured">
     <button class="featured-stage" catchtap="onEnterFeatured" aria-label="进入{{featuredCard.persona.displayName}}的判词">
       <view class="featured-halo"></view>
       <view class="featured-card">
+        <view class="card-edge-frame"></view>
+        <view class="card-corner corner-nw"></view>
+        <view class="card-corner corner-ne"></view>
+        <view class="card-corner corner-sw"></view>
+        <view class="card-corner corner-se"></view>
+        <view class="card-grain"></view>
         <text class="featured-ordinal">{{featuredCard.ordinal}}</text>
-        <view class="featured-sigil">
-          <text>{{featuredCard.monogram}}</text>
+        <text class="featured-archive">REVEALED ORACLE · {{featuredCard.sealGlyph}}</text>
+        <view class="featured-portrait">
+          <image
+            wx:if="{{featuredCard.imageSrc}}"
+            class="portrait-image"
+            src="{{featuredCard.imageSrc}}"
+            mode="aspectFill"
+            aria-hidden="true"
+          ></image>
+          <view wx:else class="portrait-silhouette">
+            <view class="portrait-head"></view>
+            <view class="portrait-shoulders"></view>
+            <text class="portrait-monogram">{{featuredCard.monogram}}</text>
+          </view>
+          <view class="portrait-ray portrait-ray-one"></view>
+          <view class="portrait-ray portrait-ray-two"></view>
+          <view class="portrait-ray portrait-ray-three"></view>
+          <view class="portrait-halo portrait-halo-outer"></view>
+          <view class="portrait-halo portrait-halo-inner"></view>
+          <view class="portrait-diamond"></view>
         </view>
         <text class="featured-slot">{{featuredCard.slotLabel}}</text>
         <text class="featured-name">{{featuredCard.persona.displayName}}</text>
         <text class="featured-perspective">{{featuredCard.persona.perspectiveLabel}}</text>
-        <view class="featured-rule"></view>
-        <text class="featured-reason">{{featuredCard.selectionReason}}</text>
-        <text class="featured-enter">轻触进入判词 ↗</text>
       </view>
     </button>
     <button class="overlay-close" catchtap="onDismissFeatured" aria-label="收起">×</button>
@@ -270,7 +313,7 @@
 
   <view
     wx:if="{{focusedCard}}"
-    class="reading-layer safe-bottom"
+    class="reading-layer safe-bottom tone-{{focusedCard.tone}} {{readingMotion}}"
     bindtouchstart="onReadingTouchStart"
     bindtouchend="onReadingTouchEnd"
   >
@@ -280,26 +323,43 @@
     </view>
     <scroll-view class="reading-scroll" scroll-y enhanced show-scrollbar="{{false}}">
       <view class="reading-room">
-        <view class="reading-monogram">
+        <view wx:if="{{focusedCard.imageSrc}}" class="reading-avatar">
+          <image
+            class="reading-avatar-image"
+            src="{{focusedCard.imageSrc}}"
+            mode="aspectFill"
+            aria-hidden="true"
+          ></image>
+          <view class="reading-avatar-shade"></view>
+        </view>
+        <view wx:else class="reading-monogram">
           <text>{{focusedCard.monogram}}</text>
         </view>
         <text class="reading-kicker">THE ORACLE · {{focusedCard.ordinal}}</text>
-        <text class="reading-title">来自{{focusedCard.persona.displayName}}的判断</text>
-        <text class="reading-subtitle">{{focusedCard.persona.perspectiveLabel}} · 基于公开方法的 AI 演绎</text>
+        <text class="reading-title">来自 {{focusedCard.persona.displayName}} 的神谕</text>
+        <text class="reading-subtitle">{{focusedCard.persona.perspectiveLabel}} · AI 演绎</text>
 
         <view class="reading-question">
           <text class="reading-section-label">THE QUESTION · 所问之事</text>
           <text>{{question}}</text>
         </view>
 
-        <view class="reading-reason">
-          <text class="reading-section-label">WHY THIS LENS · 为何是它</text>
-          <text>{{focusedCard.selectionReason}}</text>
-        </view>
+        <text wx:if="{{focusedReading.invocation}}" class="reading-invocation">{{focusedReading.invocation}}</text>
 
         <view class="reading-verdict">
           <text class="reading-section-label">THE VERDICT · 判词</text>
-          <text class="reading-body" user-select="true">{{focusedCard.body}}</text>
+          <text class="reading-verdict-text" user-select="true">{{focusedReading.verdict}}</text>
+          <view class="verdict-point"></view>
+        </view>
+
+        <view wx:if="{{focusedReading.exegesis.length}}" class="reading-exegesis">
+          <text class="reading-section-label">EXEGESIS · 释义</text>
+          <text
+            wx:for="{{focusedReading.exegesis}}"
+            wx:key="index"
+            class="reading-body"
+            user-select="true"
+          >{{item}}</text>
         </view>
 
         <view class="reading-navigation">
@@ -307,13 +367,15 @@
             class="reading-nav {{!canReadPrevious ? 'is-disabled' : ''}}"
             disabled="{{!canReadPrevious}}"
             bindtap="onReadPrevious"
-          >← 上一张</button>
-          <text>左右滑动切换已显影卡牌</text>
+            aria-label="上一张"
+          >‹</button>
+          <text>◇</text>
           <button
             class="reading-nav {{!canReadNext ? 'is-disabled' : ''}}"
             disabled="{{!canReadNext}}"
             bindtap="onReadNext"
-          >下一张 →</button>
+            aria-label="下一张"
+          >›</button>
         </view>
         <text class="reading-disclaimer">人物名称只表示方法视角，不代表本人回答或背书。</text>
       </view>
