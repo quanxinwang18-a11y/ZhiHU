@@ -9,6 +9,10 @@ import {
   splitOpinionForStreaming,
 } from "@/lib/v2/mock-advice";
 import {
+  isRealAiConfigured,
+  streamRealPersonaOpinion,
+} from "@/lib/real-ai";
+import {
   getPersonaSpec,
   selectAdvicePlan,
 } from "@/lib/v2/personas";
@@ -29,6 +33,13 @@ export async function POST(request: Request) {
   const checked = validateQuestion(body.question || "");
   if (!checked.ok) {
     return Response.json({ error: checked.error }, { status: 400 });
+  }
+  const useMock = process.env.MOCK_AI !== "false";
+  if (!useMock && !isRealAiConfigured()) {
+    return Response.json(
+      { error: "真实模型尚未配置，请联系服务提供者" },
+      { status: 503 },
+    );
   }
 
   const runId = crypto.randomUUID();
@@ -73,7 +84,7 @@ export async function POST(request: Request) {
 
       enqueue({ type: "plan", runId, plan, cards });
 
-      cards.forEach((card, cardIndex) => {
+      const startMockCard = (card: AdviceRunCard, cardIndex: number) => {
         const persona = getPersonaSpec(card.persona.id);
         if (!persona) {
           enqueue({
@@ -117,7 +128,58 @@ export async function POST(request: Request) {
           closeIfComplete();
         };
         schedule(emitNext, 180 + cardIndex * 120);
-      });
+      };
+
+      const startRealCard = async (card: AdviceRunCard) => {
+        const persona = getPersonaSpec(card.persona.id);
+        if (!persona) {
+          enqueue({
+            type: "card.failed",
+            runId,
+            cardId: card.id,
+            error: "视角配置暂不可用",
+          });
+          closeIfComplete();
+          return;
+        }
+        try {
+          const result = streamRealPersonaOpinion({
+            persona,
+            question: checked.question,
+            abortSignal: request.signal,
+          });
+          let receivedText = false;
+          for await (const delta of result.textStream) {
+            if (closed) return;
+            if (!delta) continue;
+            receivedText = true;
+            enqueue({
+              type: "card.delta",
+              runId,
+              cardId: card.id,
+              delta,
+            });
+          }
+          if (closed) return;
+          if (!receivedText) throw new Error("empty model response");
+          enqueue({ type: "card.done", runId, cardId: card.id });
+        } catch {
+          if (closed) return;
+          enqueue({
+            type: "card.failed",
+            runId,
+            cardId: card.id,
+            error: "这张卡没有完成，请稍后单独重试",
+          });
+        }
+        closeIfComplete();
+      };
+
+      if (useMock) {
+        cards.forEach(startMockCard);
+      } else {
+        cards.forEach((card) => void startRealCard(card));
+      }
 
       request.signal.addEventListener(
         "abort",
@@ -135,6 +197,7 @@ export async function POST(request: Request) {
       "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-store, no-transform",
       "X-Content-Type-Options": "nosniff",
+      "X-Advice-Mode": useMock ? "mock" : "real",
     },
   });
 }

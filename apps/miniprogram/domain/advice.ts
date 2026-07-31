@@ -1,3 +1,5 @@
+import type { SpectrumId } from "./visual-spectrum";
+
 export const adviceSlotIds = [
   "challenge_assumptions",
   "path_and_risk",
@@ -65,7 +67,7 @@ export type AdviceRunEvent =
 export type CardViewModel = AdviceRunCard & {
   slotLabel: string;
   selectionReason: string;
-  status: "waiting" | "streaming" | "ready" | "failed";
+  status: "waiting" | "streaming" | "ready" | "failed" | "cancelled";
   body: string;
   error: string;
 };
@@ -79,5 +81,5 @@ export type StoredAdviceRun = {
   synthesisTitle: string;
   synthesisBody: string;
   createdAt: number;
+  spectrumId?: SpectrumId;
 };
-

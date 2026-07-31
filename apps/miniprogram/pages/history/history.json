@@ -1,8 +1,4 @@
 {
-  "navigationBarTitleText": "本地历史",
-  "navigationStyle": "default",
-  "navigationBarBackgroundColor": "#0d0d0c",
-  "navigationBarTextStyle": "white",
+  "navigationStyle": "custom",
   "backgroundColor": "#080808"
 }
-

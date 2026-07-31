@@ -4,9 +4,15 @@ import {
   deleteAdviceRun,
   loadAdviceRuns,
 } from "../../services/history-store";
+import {
+  fallbackSpectrumFromText,
+  historySpectrumStyle,
+  isSpectrumId,
+} from "../../domain/visual-spectrum";
 
 type HistoryRunView = StoredAdviceRun & {
   dateLabel: string;
+  spectrumStyle: string;
 };
 
 function formatDate(timestamp: number) {
@@ -18,14 +24,36 @@ function formatDate(timestamp: number) {
   return `${month}.${day} ${hour}:${minute}`;
 }
 
+let deleteConfirmTimer: ReturnType<typeof setTimeout> | null = null;
+let clearConfirmTimer: ReturnType<typeof setTimeout> | null = null;
+
 Page({
   data: {
+    statusBarHeight: 20,
     runs: [] as HistoryRunView[],
     expandedId: "",
+    deleteConfirmId: "",
+    clearConfirming: false,
+  },
+
+  onUnload() {
+    if (deleteConfirmTimer) clearTimeout(deleteConfirmTimer);
+    if (clearConfirmTimer) clearTimeout(clearConfirmTimer);
+    deleteConfirmTimer = null;
+    clearConfirmTimer = null;
   },
 
   onShow() {
+    try {
+      this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
+    } catch {
+      this.setData({ statusBarHeight: 20 });
+    }
     this.refresh();
+  },
+
+  onBack() {
+    wx.navigateBack({ delta: 1 });
   },
 
   refresh() {
@@ -33,6 +61,11 @@ Page({
       runs: loadAdviceRuns().map((run) => ({
         ...run,
         dateLabel: formatDate(run.createdAt),
+        spectrumStyle: historySpectrumStyle(
+          isSpectrumId(run.spectrumId)
+            ? run.spectrumId
+            : fallbackSpectrumFromText(run.question),
+        ),
       })),
     });
   },
@@ -49,29 +82,40 @@ Page({
   }) {
     const id = event.currentTarget.dataset.id;
     if (!id) return;
-    wx.showModal({
-      title: "删除这条记录？",
-      content: "删除后无法恢复，服务端没有备份。",
-      confirmColor: "#b98a48",
-      success: (result) => {
-        if (!result.confirm) return;
-        deleteAdviceRun(id);
-        this.refresh();
-      },
-    });
+    if (this.data.deleteConfirmId !== id) {
+      if (deleteConfirmTimer) clearTimeout(deleteConfirmTimer);
+      this.setData({ deleteConfirmId: id });
+      deleteConfirmTimer = setTimeout(() => {
+        deleteConfirmTimer = null;
+        this.setData({ deleteConfirmId: "" });
+      }, 3000);
+      return;
+    }
+    if (deleteConfirmTimer) clearTimeout(deleteConfirmTimer);
+    deleteConfirmTimer = null;
+    deleteAdviceRun(id);
+    this.setData({ deleteConfirmId: "" });
+    this.refresh();
   },
 
   onClear() {
-    wx.showModal({
-      title: "清空全部本地记录？",
-      content: "这会删除当前设备上的所有问题和判断卡，无法恢复。",
-      confirmColor: "#a85f52",
-      success: (result) => {
-        if (!result.confirm) return;
-        clearAdviceRuns();
-        this.setData({ runs: [], expandedId: "" });
-      },
+    if (!this.data.clearConfirming) {
+      if (clearConfirmTimer) clearTimeout(clearConfirmTimer);
+      this.setData({ clearConfirming: true });
+      clearConfirmTimer = setTimeout(() => {
+        clearConfirmTimer = null;
+        this.setData({ clearConfirming: false });
+      }, 3000);
+      return;
+    }
+    if (clearConfirmTimer) clearTimeout(clearConfirmTimer);
+    clearConfirmTimer = null;
+    clearAdviceRuns();
+    this.setData({
+      runs: [],
+      expandedId: "",
+      clearConfirming: false,
+      deleteConfirmId: "",
     });
   },
 });
-

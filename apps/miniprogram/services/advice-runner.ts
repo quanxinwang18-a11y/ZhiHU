@@ -1,6 +1,10 @@
 import { runtimeConfig, usesRemoteApi } from "../config/runtime";
-import type { AdviceRunEvent } from "../domain/advice";
+import type {
+  AdviceRunCard,
+  AdviceRunEvent,
+} from "../domain/advice";
 import {
+  startLocalMockCardRetry,
   startLocalMockRun,
   type AdviceRunCallbacks,
   type AdviceRunController,
@@ -13,8 +17,9 @@ function isAdviceRunEvent(value: unknown): value is AdviceRunEvent {
   return typeof candidate.type === "string" && typeof candidate.runId === "string";
 }
 
-function startRemoteRun(
-  question: string,
+function startRemoteStream(
+  path: string,
+  data: WechatMiniprogram.IAnyObject,
   callbacks: AdviceRunCallbacks,
 ): AdviceRunController {
   const decoder = new Utf8ChunkDecoder();
@@ -37,9 +42,9 @@ function startRemoteRun(
   };
 
   const task = wx.request({
-    url: `${runtimeConfig.apiBaseUrl}/api/v2/advice-runs/stream`,
+    url: `${runtimeConfig.apiBaseUrl}${path}`,
     method: "POST",
-    data: { question },
+    data,
     enableChunked: true,
     header: {
       "content-type": "application/json",
@@ -82,9 +87,31 @@ export function startAdviceRun(
   callbacks: AdviceRunCallbacks,
 ): AdviceRunController {
   return usesRemoteApi
-    ? startRemoteRun(question, callbacks)
+    ? startRemoteStream(
+        "/api/v2/advice-runs/stream",
+        { question },
+        callbacks,
+      )
     : startLocalMockRun(question, callbacks);
 }
 
-export type { AdviceRunController };
+export function retryAdviceCard(
+  question: string,
+  card: AdviceRunCard,
+  callbacks: AdviceRunCallbacks,
+): AdviceRunController {
+  return usesRemoteApi
+    ? startRemoteStream(
+        "/api/v2/advice-cards/retry/stream",
+        {
+          question,
+          cardId: card.id,
+          slot: card.slot,
+          personaId: card.persona.id,
+        },
+        callbacks,
+      )
+    : startLocalMockCardRetry(card, callbacks);
+}
 
+export type { AdviceRunController };

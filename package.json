@@ -69,5 +69,18 @@
       "better-sqlite3",
       "sharp"
     ]
-  }
+  },
+  "description": "职乎是一款面向桌面端个人用户的本地优先 AI 职场意见应用。用户提交一个真实困境后，可以随机抽取或手动指定 1–8 个立场不同的“神谕视角”，并行获得相互独立的意见、继续追问，最后写下自己的决定。",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@ssh.github.com:443/quanxinwang18-a11y/ZhiHU.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

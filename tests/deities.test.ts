@@ -5,6 +5,7 @@ import {
   customDeityProfile,
   deleteCustomDeity,
   getOwnedCustomDeity,
+  listRandomOracleProfiles,
   pickOracleProfiles,
   serializeCustomDeity,
   storeDeityImage,
@@ -65,7 +66,7 @@ describe("自定义神明", () => {
     expect(getOwnedCustomDeity(deity.id, userA)?.name).toBe("现金流守望者");
     expect(getOwnedCustomDeity(deity.id, userB)).toBeUndefined();
 
-    const pool = pickOracleProfiles(userA, 8);
+    const pool = listRandomOracleProfiles(userA);
     expect(pool.some((profile) => profile.id === deity.id)).toBe(true);
 
     updateCustomDeity({
@@ -78,8 +79,8 @@ describe("自定义神明", () => {
       randomEnabled: false,
     });
     expect(
-      Array.from({ length: 8 }, () => pickOracleProfiles(userA, 8)).some(
-        (selection) => selection.some((profile) => profile.id === deity.id),
+      listRandomOracleProfiles(userA).some(
+        (profile) => profile.id === deity.id,
       ),
     ).toBe(false);
   });

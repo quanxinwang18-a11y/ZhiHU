@@ -1,21 +1,38 @@
 <view class="history-page safe-bottom">
+  <view class="history-space" aria-hidden="true">
+    <view class="history-nebula history-nebula-one"></view>
+    <view class="history-nebula history-nebula-two"></view>
+    <view class="history-star-map"></view>
+    <view class="history-vignette"></view>
+  </view>
+  <view class="history-topbar" style="padding-top: {{statusBarHeight}}px;">
+    <button class="history-back" bindtap="onBack" aria-label="返回">‹</button>
+  </view>
   <view class="history-head">
     <view>
       <text class="history-kicker">LOCAL VAULT</text>
       <text class="history-title">只保存在这台设备</text>
     </view>
-    <button wx:if="{{runs.length}}" class="clear-button" bindtap="onClear">清空</button>
+    <button
+      wx:if="{{runs.length}}"
+      class="clear-button {{clearConfirming ? 'is-confirming' : ''}}"
+      bindtap="onClear"
+    >{{clearConfirming ? '再次轻触确认' : '清空'}}</button>
   </view>
-  <text class="history-intro">当前最多保留 20 条。删除后服务端无法替你恢复。</text>
 
   <view wx:if="{{!runs.length}}" class="empty-state">
-    <text class="empty-symbol">○</text>
+    <view class="empty-seal" aria-hidden="true">
+      <view class="empty-seal-orbit empty-seal-orbit-one"></view>
+      <view class="empty-seal-orbit empty-seal-orbit-two"></view>
+      <view class="empty-seal-diamond"></view>
+      <view class="empty-seal-gem"></view>
+    </view>
     <text class="empty-title">还没有留下判断</text>
-    <text class="empty-caption">完成一次三卡显影后，记录会自动保存在这里。</text>
+    <text class="empty-caption">完成一次显影，记录自会归档。</text>
   </view>
 
   <view wx:else class="history-list">
-    <view wx:for="{{runs}}" wx:key="id" class="history-item">
+    <view wx:for="{{runs}}" wx:key="id" class="history-item" style="{{item.spectrumStyle}}">
       <view class="history-summary" data-id="{{item.id}}" bindtap="onToggle">
         <view class="history-meta">
           <text>{{item.dateLabel}}</text>
@@ -41,9 +58,12 @@
           <text class="history-card-name">{{item.synthesisTitle}}</text>
           <text class="history-card-body" user-select="true">{{item.synthesisBody}}</text>
         </view>
-        <button class="delete-button" data-id="{{item.id}}" bindtap="onDelete">删除这条记录</button>
+        <button
+          class="delete-button {{deleteConfirmId === item.id ? 'is-confirming' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onDelete"
+        >{{deleteConfirmId === item.id ? '确认删除？' : '删除'}}</button>
       </view>
     </view>
   </view>
 </view>
-

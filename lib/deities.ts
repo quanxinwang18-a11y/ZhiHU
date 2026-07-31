@@ -289,6 +289,13 @@ function shuffled<T>(items: T[]) {
   return result;
 }
 
+export function listRandomOracleProfiles(userId: string) {
+  const custom = listCustomDeities(userId)
+    .filter((deity) => deity.random_enabled)
+    .map(customDeityProfile);
+  return [...advisors.map(builtinProfile), ...custom];
+}
+
 export function pickOracleProfiles(
   userId: string,
   count = 4,
@@ -301,10 +308,7 @@ export function pickOracleProfiles(
     }
     return selected as OracleProfile[];
   }
-  const custom = listCustomDeities(userId)
-    .filter((deity) => deity.random_enabled)
-    .map(customDeityProfile);
-  const pool = [...advisors.map(builtinProfile), ...custom];
+  const pool = listRandomOracleProfiles(userId);
   return shuffled(pool).slice(0, Math.max(1, Math.min(8, count)));
 }
 

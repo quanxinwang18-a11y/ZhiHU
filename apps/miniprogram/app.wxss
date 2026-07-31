@@ -1,8 +1,10 @@
 page {
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --font-serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", serif;
   min-height: 100%;
   background: #080808;
   color: #f4efe5;
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  font-family: var(--font-sans);
 }
 
 button {
@@ -16,4 +18,3 @@ button::after {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
-

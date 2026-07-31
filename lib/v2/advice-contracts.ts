@@ -66,7 +66,35 @@ export type StartAdviceRunInput = {
   question: string;
 };
 
+export type RetryAdviceCardInput = {
+  question: string;
+  cardId: string;
+  slot: AdviceSlotId;
+  personaId: string;
+};
+
+export const adviceSynthesisModes = ["decision", "communication"] as const;
+
+export type AdviceSynthesisMode = (typeof adviceSynthesisModes)[number];
+
+export type AdviceSynthesisCardInput = {
+  personaName: string;
+  perspectiveLabel: string;
+  body: string;
+};
+
+export type AdviceSynthesisInput = {
+  question: string;
+  mode: AdviceSynthesisMode;
+  cards: AdviceSynthesisCardInput[];
+};
+
+export type AdviceSynthesisResult = {
+  title: string;
+  body: string;
+  source: "model" | "prototype";
+};
+
 export function encodeAdviceRunEvent(event: AdviceRunEvent) {
   return `${JSON.stringify(event)}\n`;
 }
-
